@@ -1,5 +1,13 @@
 """LabJury — a plugin-driven, async decision engine for labeling and moderation."""
 
+from labjury.decisions import (
+    Answer,
+    Candidate,
+    ChoiceQuestion,
+    NoulQuestion,
+    Question,
+    ScoreQuestion,
+)
 from labjury.state import (
     Content,
     Item,
@@ -14,4 +22,10 @@ __all__ = [
     "State",
     "is_content_type",
     "register_content_type",
+    "ChoiceQuestion",
+    "ScoreQuestion",
+    "NoulQuestion",
+    "Question",
+    "Answer",
+    "Candidate",
 ]
