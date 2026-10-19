@@ -8,6 +8,15 @@ from labjury.decisions import (
     Question,
     ScoreQuestion,
 )
+from labjury.plugins import (
+    Cache,
+    ContextBuilder,
+    DecisionPolicy,
+    Proposer,
+    Scorer,
+    Sink,
+    TaxonomyStore,
+)
 from labjury.results import Action, ItemResult, Status, Verdict
 from labjury.state import (
     Content,
@@ -33,4 +42,11 @@ __all__ = [
     "Status",
     "Verdict",
     "ItemResult",
+    "ContextBuilder",
+    "Proposer",
+    "Scorer",
+    "DecisionPolicy",
+    "Sink",
+    "TaxonomyStore",
+    "Cache",
 ]
