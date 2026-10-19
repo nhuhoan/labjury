@@ -18,6 +18,18 @@ test = ["pytest>=8", "pytest-asyncio>=0.23"]
 [project.urls]
 Homepage = "https://github.com/nhuhoan/labjury"
 
+# Plugin contract: third parties register plugins under these seven groups
+# (one per plugin kind) without any change to the core. load_entry_points()
+# discovers them. Groups are declared here as the documented contract; the
+# core ships no built-in entry points.
+[project.entry-points."labjury.context_builders"]
+[project.entry-points."labjury.proposers"]
+[project.entry-points."labjury.scorers"]
+[project.entry-points."labjury.policies"]
+[project.entry-points."labjury.sinks"]
+[project.entry-points."labjury.taxonomies"]
+[project.entry-points."labjury.caches"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
