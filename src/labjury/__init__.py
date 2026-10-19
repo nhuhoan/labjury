@@ -8,6 +8,7 @@ from labjury.decisions import (
     Question,
     ScoreQuestion,
 )
+from labjury.registry import available, clear, get, load_entry_points, register
 from labjury.plugins import (
     Cache,
     ContextBuilder,
@@ -49,4 +50,9 @@ __all__ = [
     "Sink",
     "TaxonomyStore",
     "Cache",
+    "register",
+    "get",
+    "available",
+    "clear",
+    "load_entry_points",
 ]
