@@ -8,6 +8,7 @@ from labjury.decisions import (
     Question,
     ScoreQuestion,
 )
+from labjury.results import Action, ItemResult, Status, Verdict
 from labjury.state import (
     Content,
     Item,
@@ -28,4 +29,8 @@ __all__ = [
     "Question",
     "Answer",
     "Candidate",
+    "Action",
+    "Status",
+    "Verdict",
+    "ItemResult",
 ]
