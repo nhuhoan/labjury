@@ -69,3 +69,7 @@ class Candidate:
     label: str
     kind: str
     question: Question
+    # Links this candidate to the registered rubric revision it was built from,
+    # for audit/reproducibility. ``None`` when the question was authored inline
+    # (no rubric registry in play). See ``labjury.rubrics``.
+    rubric_version: str | None = None

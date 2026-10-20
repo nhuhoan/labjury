@@ -9,12 +9,15 @@ modalities it consumes; ``frozenset({"*"})`` means "any".
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from labjury.audit import AuditEvent
 from labjury.decisions import Answer, Candidate, Question
 from labjury.results import ItemResult, Verdict
 from labjury.state import Item, State
+
+if TYPE_CHECKING:
+    from labjury.rubrics import Rubric
 
 
 @dataclass(frozen=True)
@@ -90,6 +93,26 @@ class TaxonomyStore(Protocol):
     async def known_labels(self) -> set[str]: ...
 
     async def proposed_labels(self) -> set[str]: ...
+
+
+@runtime_checkable
+class RubricStore(Protocol):
+    """Versioned ``label → Question`` registry. ``register`` publishes a rubric
+    version and makes it current; a published ``(label, version)`` is immutable
+    (re-publishing it with a different question is an error). ``resolve`` reads
+    the current rubric, ``get`` a specific historical version (the
+    reproducibility read), ``history`` the versions in registration order.
+    LabJury owns the registry, not the rubric content."""
+
+    async def register(
+        self, label: str, question: Question, version: str
+    ) -> "Rubric": ...
+
+    async def resolve(self, label: str) -> "Rubric | None": ...
+
+    async def get(self, label: str, version: str) -> "Rubric | None": ...
+
+    async def history(self, label: str) -> list[str]: ...
 
 
 @runtime_checkable

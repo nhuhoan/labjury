@@ -227,6 +227,19 @@ in `labjury.Secret`: its value never shows in `repr`/`str`/f-strings, and
 at the point of use: `JevClient(api_key=lj.Secret(os.environ["JEV_KEY"]).reveal())`.
 See [docs/secrets.md](docs/secrets.md).
 
+### Rubric registry (opt-in)
+
+A *rubric* is the question asked about a label (`violence` → *"graphic
+violence?"*). By default a proposer hard-codes it inline; `labjury.RubricStore`
+lets you persist and **version** `label → Question` instead, so a published
+version is immutable and every decision records which revision it used. A
+proposer sources its question with `r = await store.resolve(label)` and tags the
+candidate `rubric_version=r.version`; that version rides into the audit trail (no
+engine change), and `store.get(label, version)` reconstructs the exact rubric a
+past decision used. `InMemoryRubricStore` is the zero-dep reference; durable
+backends are bring-your-own, provable with `labjury.assert_rubric_store_contract`.
+See [docs/rubric-registry.md](docs/rubric-registry.md).
+
 ---
 
 ## Roadmap

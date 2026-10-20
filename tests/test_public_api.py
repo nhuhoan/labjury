@@ -47,6 +47,10 @@ def test_public_surface_importable():
         "HeuristicInjectionGuard",
         "GuardRejected",
         "Secret",
+        "Rubric",
+        "RubricStore",
+        "InMemoryRubricStore",
+        "assert_rubric_store_contract",
         "register",
         "load_entry_points",
     ]:
