@@ -24,6 +24,7 @@ from labjury.plugins import (
     Cache,
     ContextBuilder,
     DecisionPolicy,
+    Guard,
     ProposalContext,
     Proposer,
     Redactor,
@@ -36,6 +37,12 @@ from labjury.redaction import (
     RedactingScorer,
     RegexRedactor,
     UnredactedModalityError,
+)
+from labjury.guards import (
+    GuardRejected,
+    GuardedProposer,
+    GuardedScorer,
+    HeuristicInjectionGuard,
 )
 from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
 from labjury.policies import RecallBiasedPolicy
@@ -130,4 +137,10 @@ __all__ = [
     "RedactingProposer",
     "RegexRedactor",
     "UnredactedModalityError",
+    # prompt-injection guards
+    "Guard",
+    "GuardedScorer",
+    "GuardedProposer",
+    "HeuristicInjectionGuard",
+    "GuardRejected",
 ]

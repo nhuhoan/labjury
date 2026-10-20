@@ -69,6 +69,17 @@ class Redactor(Protocol):
 
 
 @runtime_checkable
+class Guard(Protocol):
+    """Inspect-and-reject admission check run before content crosses to a
+    remote model: ``inspect`` raises to reject the item, returns ``None`` to
+    pass. Additive, best-effort defense (e.g. prompt-injection) — unlike a
+    :class:`Redactor` it transforms nothing and offers no coverage guarantee,
+    so it has no ``accepts``/strict mode."""
+
+    async def inspect(self, state: State) -> None: ...
+
+
+@runtime_checkable
 class TaxonomyStore(Protocol):
     async def is_known(self, label: str) -> bool: ...
 
