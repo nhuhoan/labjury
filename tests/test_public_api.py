@@ -36,6 +36,11 @@ def test_public_surface_importable():
         "ReliableProposer",
         "ReliableContextBuilder",
         "CircuitOpenError",
+        "Redactor",
+        "RedactingScorer",
+        "RedactingProposer",
+        "RegexRedactor",
+        "UnredactedModalityError",
         "register",
         "load_entry_points",
     ]:

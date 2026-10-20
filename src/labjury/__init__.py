@@ -26,9 +26,16 @@ from labjury.plugins import (
     DecisionPolicy,
     ProposalContext,
     Proposer,
+    Redactor,
     Scorer,
     Sink,
     TaxonomyStore,
+)
+from labjury.redaction import (
+    RedactingProposer,
+    RedactingScorer,
+    RegexRedactor,
+    UnredactedModalityError,
 )
 from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
 from labjury.policies import RecallBiasedPolicy
@@ -117,4 +124,10 @@ __all__ = [
     "ReliableProposer",
     "ReliableContextBuilder",
     "CircuitOpenError",
+    # pii redaction
+    "Redactor",
+    "RedactingScorer",
+    "RedactingProposer",
+    "RegexRedactor",
+    "UnredactedModalityError",
 ]

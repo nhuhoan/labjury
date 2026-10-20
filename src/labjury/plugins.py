@@ -58,6 +58,17 @@ class Scorer(Protocol):
 
 
 @runtime_checkable
+class Redactor(Protocol):
+    """Masks personal data in a :class:`State` before it crosses to a remote
+    model. ``accepts`` declares which modalities it covers (``{"*"}`` = any);
+    ``redact`` returns a **new** ``State`` and never mutates its input."""
+
+    accepts: frozenset[str]
+
+    async def redact(self, state: State) -> State: ...
+
+
+@runtime_checkable
 class TaxonomyStore(Protocol):
     async def is_known(self, label: str) -> bool: ...
 

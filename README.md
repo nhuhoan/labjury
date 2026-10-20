@@ -192,6 +192,19 @@ with backoff, and a circuit breaker (`breaker(retry(timeout(call)))`) to any
 give-up surfaces as an `ItemResult(FAILED)` for the caller to re-enqueue. See
 [docs/reliability.md](docs/reliability.md).
 
+### PII redaction (opt-in)
+
+Content classified by LabJury carries personal data, and the riskiest moment is
+when it crosses to a third-party model. `labjury.RedactingScorer` /
+`RedactingProposer` wrap any remote plugin and mask the `State` copy it is about
+to see — the engine keeps the original, so the policy and sink are unaffected.
+You plug your own `Redactor` (Presidio, cloud DLP, an in-house model); a
+zero-dependency `RegexRedactor` baseline ships for day-one use (not a compliance
+control). Fail-closed by default: a redactor error, or a modality it does not
+cover, blocks the item rather than leaking. Compose with reliability:
+`lj.ReliableScorer(lj.RedactingScorer(JevScorer(...), lj.RegexRedactor()))`. See
+[docs/pii-redaction.md](docs/pii-redaction.md).
+
 ---
 
 ## Roadmap
