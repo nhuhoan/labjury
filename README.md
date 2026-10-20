@@ -280,6 +280,14 @@ exact-match rate. `lj.compare_evals(baseline, candidate)` diffs two runs for pol
 regression — gate your CI with `assert not cmp.regressed(tolerance=…)`. Pure,
 deterministic, zero-dep. See [docs/evaluation.md](docs/evaluation.md).
 
+### Versioning & plugin conformance
+
+LabJury follows SemVer: the public API is exactly `labjury.__all__`, and the
+`@runtime_checkable` plugin protocols are the stable contract. Prove a plugin fits
+with `lj.assert_plugin_conforms(obj, Scorer)` (stage plugins) or the
+`assert_*_store_contract` suites (stateful backends). See
+[docs/versioning.md](docs/versioning.md).
+
 ---
 
 ## Roadmap

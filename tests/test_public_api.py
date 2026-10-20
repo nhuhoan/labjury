@@ -18,61 +18,42 @@ class _FoodProposer:
         return [Candidate("food", "tag", ChoiceQuestion("food_q", "food?", ["food"]))]
 
 
+# The curated load-bearing public names: dropping any of these from __all__ is a
+# major-version break, so the suite guards them explicitly.
+_MUST_REMAIN_PUBLIC = {
+    "Engine", "Item", "State", "Content",
+    "ContextBuilder", "Proposer", "Scorer", "DecisionPolicy", "Sink", "Cache",
+    "Observer", "TaxonomyStore", "AuditLog",
+    "register", "get", "available", "load_entry_points",
+    "assert_plugin_conforms",
+    "__version__",
+}
+
+# Exported plugin protocols must stay runtime-checkable so authors can isinstance.
+_EXPORTED_PROTOCOLS = [
+    "ContextBuilder", "Proposer", "Scorer", "DecisionPolicy", "Sink", "Cache",
+    "Observer", "TaxonomyStore", "AuditLog", "RubricStore", "Redactor", "Guard",
+    "ReviewQueue",
+]
+
+
 def test_public_surface_importable():
-    for name in [
-        "Engine",
-        "Item",
-        "State",
-        "LLMJudgeScorer",
-        "RecallBiasedPolicy",
-        "InMemoryCache",
-        "InMemoryTaxonomyStore",
-        "CollectingSink",
-        "InMemoryObserver",
-        "Router",
-        "Proposer",
-        "ProposalContext",
-        "ReliableScorer",
-        "ReliableProposer",
-        "ReliableContextBuilder",
-        "CircuitOpenError",
-        "Redactor",
-        "RedactingScorer",
-        "RedactingProposer",
-        "RegexRedactor",
-        "UnredactedModalityError",
-        "Guard",
-        "GuardedScorer",
-        "GuardedProposer",
-        "HeuristicInjectionGuard",
-        "GuardRejected",
-        "Secret",
-        "Rubric",
-        "RubricStore",
-        "InMemoryRubricStore",
-        "assert_rubric_store_contract",
-        "verify_replay",
-        "ReplayReport",
-        "VersionChange",
-        "TenantUsage",
-        "PerTenantUsage",
-        "FanOutObserver",
-        "ReviewTask",
-        "ReviewResolution",
-        "ReviewQueue",
-        "InMemoryReviewQueue",
-        "review_task_from_event",
-        "LabelScore",
-        "EvalReport",
-        "score_predictions",
-        "GoldenCase",
-        "run_evaluation",
-        "EvalComparison",
-        "compare_evals",
-        "register",
-        "load_entry_points",
-    ]:
-        assert hasattr(lj, name), f"missing public export: {name}"
+    # __all__ *is* the public contract: every name in it must resolve.
+    for name in lj.__all__:
+        assert hasattr(lj, name), f"{name} in __all__ but not importable"
+
+
+def test_core_names_remain_public():
+    missing = _MUST_REMAIN_PUBLIC - set(lj.__all__)
+    assert not missing, f"core public names dropped from __all__: {missing}"
+
+
+def test_exported_protocols_are_runtime_checkable():
+    for name in _EXPORTED_PROTOCOLS:
+        proto = getattr(lj, name)
+        assert getattr(proto, "_is_runtime_protocol", False), (
+            f"{name} must be @runtime_checkable so plugin authors can isinstance-check"
+        )
 
 
 async def test_full_pipeline_runs_without_jev():

@@ -279,6 +279,14 @@ lần chạy để bắt policy regression — chặn CI bằng `assert not
 cmp.regressed(tolerance=…)`. Thuần, deterministic, zero-dep. Xem
 [docs/evaluation.md](docs/evaluation.md).
 
+### Phiên bản & kiểm chuẩn plugin
+
+LabJury theo SemVer: public API chính là `labjury.__all__`, và các protocol plugin
+`@runtime_checkable` là hợp đồng ổn định. Chứng minh một plugin hợp lệ bằng
+`lj.assert_plugin_conforms(obj, Scorer)` (stage plugin) hoặc các suite
+`assert_*_store_contract` (backend có trạng thái). Xem
+[docs/versioning.md](docs/versioning.md).
+
 ---
 
 ## Lộ trình
