@@ -24,6 +24,11 @@ class RecallBiasedPolicy:
         self._accept = accept_threshold
         self._clean = clean_threshold
 
+    @property
+    def params(self) -> dict:
+        """Thresholds, captured into the audit trail as decision provenance."""
+        return {"accept_threshold": self._accept, "clean_threshold": self._clean}
+
     async def decide(
         self,
         state: State,

@@ -14,7 +14,7 @@ from labjury import (
     Status,
     Verdict,
 )
-from labjury.defaults import CollectingSink, InMemoryCache
+from labjury.defaults import CollectingSink, InMemoryAuditLog, InMemoryCache
 from labjury.engine import Engine
 from labjury.observability import InMemoryObserver
 from labjury.policies import RecallBiasedPolicy
@@ -96,7 +96,8 @@ class _ImageScorer:
 
 # ---- fixtures / helpers ---------------------------------------------------
 
-def make_engine(track_proposer=False, fail_on_id=None, max_concurrency=64, slow_scorer=False):
+def make_engine(track_proposer=False, fail_on_id=None, max_concurrency=64, slow_scorer=False,
+                audit=None):
     proposer = _FoodProposer()
     eng = Engine(
         context_builders=[_TextBuilder(fail_on_id=fail_on_id)],
@@ -107,6 +108,7 @@ def make_engine(track_proposer=False, fail_on_id=None, max_concurrency=64, slow_
         cache=InMemoryCache(),
         taxonomy=InMemoryTaxonomyStore(),
         observer=InMemoryObserver(),
+        audit=audit,
         max_concurrency=max_concurrency,
     )
     if track_proposer:
@@ -203,3 +205,46 @@ async def test_proposer_receives_known_labels_from_taxonomy():
     )
     await eng.process(Item("i1", {"text": "x"}))
     assert proposer.seen_known_labels == {"food"}
+
+
+async def test_decided_item_records_full_event():
+    audit = InMemoryAuditLog()
+    eng = make_engine(audit=audit)
+    await eng.process(Item("i1", {"text": "x"}))
+    [e] = await audit.by_correlation("i1")
+    assert e.from_cache is False and e.used_proposer is True
+    assert e.input_fingerprint == eng._key(Item("i1", {"text": "x"}))  # fingerprint, not content
+    assert e.candidates and e.answers
+    assert "policy" in e.provenance and "scorer" in e.provenance
+    assert e.provenance["policy"].params is not None
+    assert e.known_labels == frozenset()  # fresh taxonomy
+    assert e.verdict["action"] in ("accept", "review")
+
+
+async def test_cache_hit_records_thin_event():
+    audit = InMemoryAuditLog()
+    eng = make_engine(audit=audit)
+    item = Item("i1", {"text": "x"})
+    await eng.cache.put(eng._key(item), Verdict(Action.ACCEPT, ["food"], {}, [], "cached"))
+    await eng.process(item)
+    [e] = await audit.by_correlation("i1")
+    assert e.from_cache is True and e.candidates == () and e.verdict["reason"] == "cached"
+
+
+async def test_audit_failure_does_not_break_process():
+    class Boom:
+        async def record(self, event):
+            raise RuntimeError("down")
+
+        async def by_correlation(self, cid):
+            return []
+
+    eng = make_engine(audit=Boom())
+    r = await eng.process(Item("i1", {"text": "x"}))
+    assert r.status in (Status.DECIDED, Status.REVIEW)
+
+
+def test_recall_biased_policy_exposes_params():
+    from labjury.policies import RecallBiasedPolicy
+
+    assert RecallBiasedPolicy().params == {"accept_threshold": 0.85, "clean_threshold": 0.9}

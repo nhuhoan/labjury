@@ -19,8 +19,16 @@ import hashlib
 import json
 from typing import Callable
 
+from labjury.audit import (
+    AuditEvent,
+    ProvenanceRef,
+    answer_to_dict,
+    candidate_to_dict,
+)
 from labjury.decisions import Candidate
+from labjury.defaults import NullAuditLog
 from labjury.plugins import (
+    AuditLog,
     Cache,
     ContextBuilder,
     DecisionPolicy,
@@ -36,6 +44,24 @@ from labjury.router import Router
 from labjury.state import Item, State
 
 
+def _provenance_of(plugin: object) -> ProvenanceRef:
+    return ProvenanceRef(
+        type(plugin).__name__,
+        getattr(plugin, "version", None),
+        getattr(plugin, "params", None),
+    )
+
+
+def _verdict_to_dict(v: Verdict) -> dict:
+    return {
+        "action": v.action.value,
+        "labels": v.labels,
+        "scores": v.scores,
+        "novel_labels": v.novel_labels,
+        "reason": v.reason,
+    }
+
+
 class Engine:
     def __init__(
         self,
@@ -48,6 +74,7 @@ class Engine:
         taxonomy: TaxonomyStore,
         observer: Observer,
         *,
+        audit: AuditLog | None = None,
         standing_candidates: list[Candidate] | None = None,
         max_concurrency: int = 64,
         cache_key: Callable[[Item], str] | None = None,
@@ -60,6 +87,7 @@ class Engine:
         self._sink = sink
         self._taxonomy = taxonomy
         self._observer = observer
+        self._audit = audit or NullAuditLog()
         self._standing = standing_candidates or []
         self._max_concurrency = max_concurrency
         self._cache_key = cache_key or self._default_key
@@ -104,15 +132,21 @@ class Engine:
         key = self._cache_key(item)
         cached = await self.cache.get(key)
         if cached is not None:
+            await self._record_safe(
+                AuditEvent(
+                    item.id, key, from_cache=True, verdict=_verdict_to_dict(cached)
+                )
+            )
             return ItemResult(item.id, self._status_for(cached.action), verdict=cached)
 
         state = State()
         for builder in self._context_builders:
             state = await builder.build(item, state)
 
+        known = frozenset(await self._taxonomy.known_labels())
         route = self._router.route(state)
         if route.use_proposer:
-            context = ProposalContext(frozenset(await self._taxonomy.known_labels()))
+            context = ProposalContext(known)
             candidates = list(self._standing)
             for proposer in self._proposers:
                 if "*" in proposer.accepts or state.modalities() <= set(proposer.accepts):
@@ -128,7 +162,31 @@ class Engine:
         answers = await route.scorer.score(state, questions)
         verdict = await self._policy.decide(state, candidates, answers, self._taxonomy)
         await self.cache.put(key, verdict)
+        await self._record_safe(
+            AuditEvent(
+                item.id,
+                key,
+                modalities=frozenset(state.modalities()),
+                used_proposer=route.use_proposer,
+                candidates=tuple(candidate_to_dict(c) for c in candidates),
+                answers=tuple(answer_to_dict(a) for a in answers),
+                known_labels=known,
+                provenance={
+                    "scorer": _provenance_of(route.scorer),
+                    "policy": _provenance_of(self._policy),
+                },
+                verdict=_verdict_to_dict(verdict),
+            )
+        )
         return ItemResult(item.id, self._status_for(verdict.action), verdict=verdict)
+
+    async def _record_safe(self, event: AuditEvent) -> None:
+        # Auditing is a side record; a failing backend must never break a
+        # decision. Swallow here — the backend owns its own durability/retry.
+        try:
+            await self._audit.record(event)
+        except Exception:  # noqa: BLE001 - best-effort audit, never fatal
+            pass
 
     async def _finish(self, result: ItemResult) -> None:
         await self._sink.emit(result)
