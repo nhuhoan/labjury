@@ -44,6 +44,7 @@ from labjury.guards import (
     GuardedScorer,
     HeuristicInjectionGuard,
 )
+from labjury.secrets import Secret
 from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
 from labjury.policies import RecallBiasedPolicy
 from labjury.reliability import (
@@ -143,4 +144,6 @@ __all__ = [
     "GuardedProposer",
     "HeuristicInjectionGuard",
     "GuardRejected",
+    # secrets
+    "Secret",
 ]

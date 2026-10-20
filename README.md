@@ -217,6 +217,16 @@ reliability — guard inspects the original content, then redaction masks it:
 `lj.ReliableScorer(lj.GuardedScorer(lj.RedactingScorer(JevScorer(...), redactor), guard))`.
 See [docs/prompt-injection.md](docs/prompt-injection.md).
 
+### Secrets (opt-in)
+
+LabJury never stores or asks for API keys — plugins receive configured clients,
+and the audit trail is fingerprint-only. To keep a key from leaking through a
+log line, a traceback, or the one audit path that records plugin config, wrap it
+in `labjury.Secret`: its value never shows in `repr`/`str`/f-strings, and
+`json.dumps` raises rather than serializing it (a leak fails loud). Read it only
+at the point of use: `JevClient(api_key=lj.Secret(os.environ["JEV_KEY"]).reveal())`.
+See [docs/secrets.md](docs/secrets.md).
+
 ---
 
 ## Roadmap

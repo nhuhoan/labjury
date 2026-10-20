@@ -215,6 +215,16 @@ dung gốc, rồi redaction mới che:
 `lj.ReliableScorer(lj.GuardedScorer(lj.RedactingScorer(JevScorer(...), redactor), guard))`.
 Xem [docs/prompt-injection.md](docs/prompt-injection.md).
 
+### Bí mật / khóa API (tùy chọn)
+
+LabJury không bao giờ lưu hay đòi khóa API — plugin nhận client đã cấu hình sẵn,
+audit log chỉ lưu fingerprint. Để khóa không bị rò qua một dòng log, một
+traceback, hay đường duy nhất ghi lại cấu hình plugin, hãy bọc nó trong
+`labjury.Secret`: giá trị không hiện trong `repr`/`str`/f-string, và `json.dumps`
+sẽ raise thay vì serialize (rò thì fail loud). Chỉ đọc ngay tại chỗ dùng:
+`JevClient(api_key=lj.Secret(os.environ["JEV_KEY"]).reveal())`. Xem
+[docs/secrets.md](docs/secrets.md).
+
 ---
 
 ## Lộ trình
