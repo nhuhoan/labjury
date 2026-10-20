@@ -143,6 +143,25 @@ Rồi `labjury.load_entry_points()` sẽ nạp nó. Các loại plugin:
 `context_builders`, `proposers`, `scorers`, `policies`, `sinks`,
 `taxonomies`, `caches`.
 
+### Taxonomy backend bền vững & tự xây
+
+Từ vựng của taxonomy cần sống sót qua mỗi lần khởi động lại. Có sẵn backend
+tham chiếu Redis:
+
+```bash
+pip install labjury[redis]
+```
+
+```python
+from labjury.contrib.redis_taxonomy import RedisTaxonomyStore
+engine = lj.Engine(..., taxonomy=RedisTaxonomyStore(async_redis_client))
+```
+
+Redis chỉ là một lựa chọn — bạn có thể dùng hệ store riêng (Postgres, DynamoDB,
+store nội bộ) bằng cách hiện thực protocol `TaxonomyStore`, rồi kiểm chứng bằng
+conformance suite có sẵn (`labjury.assert_taxonomy_store_contract`). Xem
+[docs/taxonomy-backends.md](docs/taxonomy-backends.md).
+
 ---
 
 ## Lộ trình

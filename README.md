@@ -144,6 +144,26 @@ Then `labjury.load_entry_points()` makes it available. Plugin kinds:
 `context_builders`, `proposers`, `scorers`, `policies`, `sinks`,
 `taxonomies`, `caches`.
 
+### Durable & custom taxonomy backends
+
+The taxonomy's vocabulary should outlive a restart. A Redis reference backend
+ships built-in:
+
+```bash
+pip install labjury[redis]
+```
+
+```python
+from labjury.contrib.redis_taxonomy import RedisTaxonomyStore
+engine = lj.Engine(..., taxonomy=RedisTaxonomyStore(async_redis_client))
+```
+
+Redis is just one option — back the taxonomy with your own system (Postgres,
+DynamoDB, an in-house store) by implementing the `TaxonomyStore` protocol, and
+verify it with the shipped conformance suite
+(`labjury.assert_taxonomy_store_contract`). See
+[docs/taxonomy-backends.md](docs/taxonomy-backends.md).
+
 ---
 
 ## Roadmap
