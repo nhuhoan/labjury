@@ -250,6 +250,16 @@ re-runs the policy over the recorded inputs and returns a `ReplayReport` whose
 hasn't drifted since. Only the policy stage is replayed — the scorer is pinned by
 the recorded answers. See [docs/reproducibility.md](docs/reproducibility.md).
 
+### Multi-tenancy & per-tenant cost (opt-in)
+
+One deployment, many tenants. An `Item(…, tenant="acme")` carries its tenant, and
+the engine stamps it onto every `ItemResult` and `AuditEvent` — so you partition
+your own stores and dashboards by tenant (LabJury carries the identity; you bring
+and key the storage). `lj.PerTenantUsage` is an observer that tallies decision
+counts and latency per tenant (the model-agnostic cost signal; multiply by your
+model's rate for dollars), and `lj.FanOutObserver` runs it beside a Prometheus
+observer. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
+
 ---
 
 ## Roadmap

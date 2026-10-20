@@ -248,6 +248,16 @@ một dòng: chạy lại policy trên input đã ghi và trả về `ReplayRepo
 Chỉ stage policy được chạy lại — scorer đã bị ghim bởi answers đã lưu. Xem
 [docs/reproducibility.md](docs/reproducibility.md).
 
+### Đa tenant & chi phí theo tenant (tùy chọn)
+
+Một deployment, nhiều tenant. `Item(…, tenant="acme")` mang theo tenant, và engine
+đóng dấu nó lên mọi `ItemResult` và `AuditEvent` — để bạn tự phân vùng store và
+dashboard theo tenant (LabJury mang danh tính, bạn tự mang & key storage).
+`lj.PerTenantUsage` là observer gom số quyết định và độ trễ theo tenant (tín hiệu
+cost model-agnostic; nhân với đơn giá model của bạn để ra tiền), và
+`lj.FanOutObserver` cho nó chạy song song với observer Prometheus. Xem
+[docs/multi-tenancy.md](docs/multi-tenancy.md).
+
 ---
 
 ## Lộ trình

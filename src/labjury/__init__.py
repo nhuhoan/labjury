@@ -19,7 +19,13 @@ from labjury.defaults import (
     NullAuditLog,
 )
 from labjury.engine import Engine
-from labjury.observability import InMemoryObserver, Observer
+from labjury.observability import (
+    FanOutObserver,
+    InMemoryObserver,
+    Observer,
+    PerTenantUsage,
+    TenantUsage,
+)
 from labjury.plugins import (
     Cache,
     ContextBuilder,
@@ -165,4 +171,8 @@ __all__ = [
     "RubricStore",
     "InMemoryRubricStore",
     "assert_rubric_store_contract",
+    # multi-tenancy & per-tenant cost
+    "TenantUsage",
+    "PerTenantUsage",
+    "FanOutObserver",
 ]
