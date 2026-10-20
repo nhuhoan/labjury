@@ -38,6 +38,7 @@ from labjury.state import (
     register_content_type,
 )
 from labjury.taxonomy import InMemoryTaxonomyStore
+from labjury.testing import assert_taxonomy_store_contract
 
 __all__ = [
     # state
@@ -86,4 +87,6 @@ __all__ = [
     "CollectingSink",
     "InMemoryObserver",
     "LLMJudgeScorer",
+    # testing helpers
+    "assert_taxonomy_store_contract",
 ]
