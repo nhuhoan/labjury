@@ -4,6 +4,7 @@ from labjury.plugins import Proposer, ProposalContext, Redactor, Scorer
 from labjury.redaction import (
     RedactingProposer,
     RedactingScorer,
+    RegexRedactor,
     UnredactedModalityError,
 )
 from labjury.state import Content, State
@@ -119,3 +120,30 @@ async def test_redacting_proposer_redacts_and_is_a_proposer():
     await RedactingProposer(inner, _FakeRedactor()).propose(s, ProposalContext())
     assert inner.seen.get("text")[0].payload == "HI"
     assert isinstance(RedactingProposer(inner, _FakeRedactor()), Proposer)
+
+
+async def test_regex_masks_email_phone_card():
+    s = State()
+    s.add(Content("text", "mail a@b.com call 0912345678 card 4111 1111 1111 1111"))
+    out = await RegexRedactor().redact(s)
+    masked = out.get("text")[0].payload
+    assert "a@b.com" not in masked and "[EMAIL]" in masked
+    assert "[PHONE]" in masked and "[CARD]" in masked
+
+
+async def test_regex_leaves_non_text_untouched():
+    s = State()
+    s.add(Content("image", b"rawbytes"))
+    out = await RegexRedactor().redact(s)
+    assert out.get("image")[0].payload == b"rawbytes"
+
+
+async def test_regex_returns_new_state_original_unchanged():
+    s = State()
+    s.add(Content("text", "a@b.com"))
+    await RegexRedactor().redact(s)
+    assert s.get("text")[0].payload == "a@b.com"
+
+
+def test_regex_redactor_is_a_redactor():
+    assert isinstance(RegexRedactor(), Redactor)

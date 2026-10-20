@@ -67,3 +67,40 @@ class RedactingProposer:
         _guard(self._redactor, state, self._strict)
         redacted = await self._redactor.redact(state)
         return await self._inner.propose(redacted, context)
+
+
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_CARD = re.compile(r"\b\d{4}(?:[ -]?\d{4}){3}\b")
+_PHONE = re.compile(r"\+?\d(?:[ -]?\d){8,}")
+
+
+class RegexRedactor:
+    """Zero-dependency baseline redactor for obvious text patterns.
+
+    Masks emails, phone-shaped digit runs, and card-shaped digit groups in
+    every ``text`` content. **Baseline only, not a compliance control**: it
+    misses names, addresses, non-text PII, and obfuscated forms. Companies with
+    real obligations plug a proper :class:`~labjury.plugins.Redactor` (Presidio,
+    cloud DLP, an in-house NER model) behind the same protocol.
+    """
+
+    accepts = frozenset({"text"})
+
+    async def redact(self, state: State) -> State:
+        out = State()
+        out.flags = set(state.flags)
+        for mod in state.modalities():
+            for c in state.get(mod):
+                if c.modality == "text":
+                    out.add(Content("text", self._mask(c.payload), c.meta))
+                else:
+                    out.add(c)
+        return out
+
+    @staticmethod
+    def _mask(text: str) -> str:
+        # card before phone: a card is a superset of the phone shape
+        text = _EMAIL.sub("[EMAIL]", text)
+        text = _CARD.sub("[CARD]", text)
+        text = _PHONE.sub("[PHONE]", text)
+        return text
