@@ -168,7 +168,8 @@ Ghi một `AuditEvent` bất biến cho mỗi quyết định và replay lại s
 `lj.Engine(..., audit=lj.InMemoryAuditLog())`. LabJury **không kèm database** —
 dùng store riêng (Kafka/S3/SIEM/SQL) qua protocol `AuditLog` append-only và mối
 nối `AuditEvent.to_dict`/`from_dict`, kiểm chứng bằng
-`labjury.assert_audit_log_contract`. Xem
+`labjury.assert_audit_log_contract`. Có sẵn một backend SQLite bền vững
+(`labjury.contrib.sqlite_audit.SqliteAuditLog`, không cần extra). Xem
 [docs/audit-trail.md](docs/audit-trail.md).
 
 ---

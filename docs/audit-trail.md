@@ -100,3 +100,26 @@ class JsonlAuditLog:
 
 The log is **append-only** by contract: `record` and reads only, never update
 or delete — immutability is the point of an audit trail.
+
+## The SQLite reference backend
+
+If you want a durable store without standing up infrastructure, one ships
+built-in — `SqliteAuditLog`, backed by the stdlib `sqlite3`. **No install
+extra** (SQLite is in Python's standard library):
+
+```python
+from labjury.contrib.sqlite_audit import SqliteAuditLog
+
+engine = lj.Engine(..., audit=SqliteAuditLog("audit.db"))
+```
+
+Events land in a single append-only table and **survive a restart** — a fresh
+`SqliteAuditLog` opened on the same path reads back everything the last one
+wrote. `table="labjury_audit"` lets independent logs share one file. The
+blocking `sqlite3` calls run under `asyncio.to_thread`, so the backend honors
+the async `AuditLog` protocol without stalling the event loop.
+
+Like `RedisTaxonomyStore`, this is **one reference backend, not a requirement**.
+A Postgres (or any SQL) backend is the same shape — the same append-only
+schema, the same `to_dict`/`from_dict` seam, the same `by_correlation` query —
+with a different driver. Prove yours with `assert_audit_log_contract`.

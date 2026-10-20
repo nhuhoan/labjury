@@ -170,7 +170,8 @@ Record an immutable `AuditEvent` per decision and replay it later:
 `lj.Engine(..., audit=lj.InMemoryAuditLog())`. LabJury ships **no database** —
 bring your own store (Kafka/S3/SIEM/SQL) via the append-only `AuditLog` protocol
 and the `AuditEvent.to_dict`/`from_dict` seam, verified with
-`labjury.assert_audit_log_contract`. See
+`labjury.assert_audit_log_contract`. A durable SQLite reference backend ships
+built-in (`labjury.contrib.sqlite_audit.SqliteAuditLog`, no extra needed). See
 [docs/audit-trail.md](docs/audit-trail.md).
 
 ---
