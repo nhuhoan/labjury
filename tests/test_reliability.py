@@ -6,6 +6,9 @@ from labjury.decisions import Answer, Candidate, ChoiceQuestion
 from labjury.plugins import ContextBuilder, Proposer, ProposalContext, Scorer
 from labjury.reliability import (
     CircuitOpenError,
+    FailoverContextBuilder,
+    FailoverProposer,
+    FailoverScorer,
     ReliableContextBuilder,
     ReliableProposer,
     ReliableScorer,
@@ -166,3 +169,114 @@ async def test_reliable_context_builder_delegates_accepts_and_produces():
     assert await rel.build(None, state) is state and inner.calls == 2
     assert isinstance(rel, ContextBuilder)
     assert rel.accepts == frozenset({"text"}) and rel.produces == frozenset({"json"})
+
+
+# ---- failover ----------------------------------------------------------------
+
+class _OKScorer:
+    accepts = frozenset({"text"})
+
+    def __init__(self, tag):
+        self.tag = tag
+        self.called = False
+
+    async def score(self, state, questions):
+        self.called = True
+        return [self.tag]
+
+
+class _BoomScorer:
+    accepts = frozenset({"text"})
+
+    def __init__(self):
+        self.called = False
+
+    async def score(self, state, questions):
+        self.called = True
+        raise RuntimeError("down")
+
+
+class _CancelScorer:
+    accepts = frozenset({"text"})
+
+    async def score(self, state, questions):
+        raise asyncio.CancelledError()
+
+
+async def test_first_success_short_circuits():
+    first, second = _OKScorer("a"), _OKScorer("b")
+    out = await FailoverScorer([first, second]).score(None, [])
+    assert out == ["a"]
+    assert second.called is False
+
+
+async def test_failover_to_next_on_error():
+    primary, backup = _BoomScorer(), _OKScorer("b")
+    out = await FailoverScorer([primary, backup]).score(None, [])
+    assert out == ["b"]
+    assert primary.called is True
+
+
+async def test_all_fail_raises_last():
+    with pytest.raises(RuntimeError):
+        await FailoverScorer([_BoomScorer(), _BoomScorer()]).score(None, [])
+
+
+async def test_cancelled_propagates():
+    with pytest.raises(asyncio.CancelledError):
+        await FailoverScorer([_CancelScorer(), _OKScorer("b")]).score(None, [])
+
+
+def test_empty_raises():
+    with pytest.raises(ValueError):
+        FailoverScorer([])
+
+
+def test_delegates_capabilities_and_is_protocol():
+    fs = FailoverScorer([_OKScorer("a")])
+    assert fs.accepts == frozenset({"text"})
+    assert isinstance(fs, Scorer)
+
+
+class _OKProposer:
+    accepts = frozenset({"text"})
+
+    async def propose(self, state, context):
+        return ["cand"]
+
+
+class _BoomProposer:
+    accepts = frozenset({"text"})
+
+    async def propose(self, state, context):
+        raise RuntimeError("down")
+
+
+async def test_failover_proposer():
+    fp = FailoverProposer([_BoomProposer(), _OKProposer()])
+    assert await fp.propose(None, ProposalContext()) == ["cand"]
+    assert isinstance(fp, Proposer)
+
+
+class _OKBuilder:
+    accepts = frozenset({"text"})
+    produces = frozenset({"json"})
+
+    async def build(self, item, state):
+        return state
+
+
+class _BoomBuilder:
+    accepts = frozenset({"text"})
+    produces = frozenset({"json"})
+
+    async def build(self, item, state):
+        raise RuntimeError("down")
+
+
+async def test_failover_builder_delegates_produces():
+    fb = FailoverContextBuilder([_BoomBuilder(), _OKBuilder()])
+    sentinel = object()
+    assert await fb.build(None, sentinel) is sentinel
+    assert fb.produces == frozenset({"json"})
+    assert isinstance(fb, ContextBuilder)

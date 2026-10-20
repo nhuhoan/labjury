@@ -136,3 +136,54 @@ class ReliableContextBuilder:
 
     async def build(self, item, state):
         return await self._runner.run(lambda: self._inner.build(item, state))
+
+
+# -- failover: the sibling composition -----------------------------------------
+# Try interchangeable same-kind plugins in order; return the first that does not
+# raise. All raise -> re-raise the last (fail-closed -> engine FAILED). Composes
+# with Reliable* (a member may itself be a ReliableScorer).
+
+
+async def _failover(members: list, call: Callable[[object], Awaitable[T]]) -> T:
+    last_exc: BaseException | None = None
+    for member in members:
+        try:
+            return await call(member)
+        except Exception as exc:  # NOT BaseException: CancelledError propagates
+            last_exc = exc
+    assert last_exc is not None  # ctor guarantees a non-empty member list
+    raise last_exc
+
+
+class FailoverScorer:
+    def __init__(self, scorers) -> None:
+        self._members = list(scorers)
+        if not self._members:
+            raise ValueError("FailoverScorer needs at least one scorer")
+        self.accepts = self._members[0].accepts
+
+    async def score(self, state, questions):
+        return await _failover(self._members, lambda m: m.score(state, questions))
+
+
+class FailoverProposer:
+    def __init__(self, proposers) -> None:
+        self._members = list(proposers)
+        if not self._members:
+            raise ValueError("FailoverProposer needs at least one proposer")
+        self.accepts = self._members[0].accepts
+
+    async def propose(self, state, context):
+        return await _failover(self._members, lambda m: m.propose(state, context))
+
+
+class FailoverContextBuilder:
+    def __init__(self, builders) -> None:
+        self._members = list(builders)
+        if not self._members:
+            raise ValueError("FailoverContextBuilder needs at least one builder")
+        self.accepts = self._members[0].accepts
+        self.produces = self._members[0].produces
+
+    async def build(self, item, state):
+        return await _failover(self._members, lambda m: m.build(item, state))
