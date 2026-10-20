@@ -297,6 +297,18 @@ LabJury theo SemVer: public API chính là `labjury.__all__`, và các protocol 
 
 ---
 
+## Đóng góp & quản trị
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — cách setup, quy ước lõi-zero-dep / TDD /
+  plugin, và cách đưa một thay đổi vào merge.
+- [docs/versioning.md](docs/versioning.md) — chính sách SemVer: public API chính là
+  `labjury.__all__`, và cách chứng minh một plugin hợp chuẩn.
+- [SECURITY.md](./SECURITY.md) — báo cáo lỗ hổng, và tuyên bố trung thực về việc các
+  cơ chế bảo mật tích hợp sẵn làm được và không làm được gì.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant v2.1.
+
+---
+
 ## Giấy phép
 
 [Apache-2.0](./LICENSE)
