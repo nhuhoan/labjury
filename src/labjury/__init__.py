@@ -28,6 +28,7 @@ from labjury.plugins import (
     ProposalContext,
     Proposer,
     Redactor,
+    RubricStore,
     Scorer,
     Sink,
     TaxonomyStore,
@@ -45,6 +46,7 @@ from labjury.guards import (
     HeuristicInjectionGuard,
 )
 from labjury.secrets import Secret
+from labjury.rubrics import InMemoryRubricStore, Rubric
 from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
 from labjury.policies import RecallBiasedPolicy
 from labjury.reliability import (
@@ -67,6 +69,7 @@ from labjury.state import (
 from labjury.taxonomy import InMemoryTaxonomyStore
 from labjury.testing import (
     assert_audit_log_contract,
+    assert_rubric_store_contract,
     assert_taxonomy_store_contract,
 )
 
@@ -146,4 +149,9 @@ __all__ = [
     "GuardRejected",
     # secrets
     "Secret",
+    # rubric registry
+    "Rubric",
+    "RubricStore",
+    "InMemoryRubricStore",
+    "assert_rubric_store_contract",
 ]

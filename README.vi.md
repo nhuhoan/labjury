@@ -225,6 +225,19 @@ sẽ raise thay vì serialize (rò thì fail loud). Chỉ đọc ngay tại ch�
 `JevClient(api_key=lj.Secret(os.environ["JEV_KEY"]).reveal())`. Xem
 [docs/secrets.md](docs/secrets.md).
 
+### Sổ đăng ký rubric (tùy chọn)
+
+*Rubric* là câu hỏi hỏi về một nhãn (`violence` → *"bạo lực đồ họa?"*). Mặc định
+proposer hard-code câu hỏi inline; `labjury.RubricStore` cho phép lưu và **đánh
+version** cho `label → Question` — một version đã publish là bất biến, và mỗi
+quyết định ghi lại nó dùng bản nào. Proposer lấy câu hỏi bằng
+`r = await store.resolve(label)` rồi gắn `rubric_version=r.version` lên candidate;
+version đó tự chảy vào audit trail (không đổi engine), và `store.get(label,
+version)` dựng lại đúng rubric mà một quyết định cũ đã dùng. `InMemoryRubricStore`
+là bản tham chiếu zero-dep; backend bền vững là "tự mang", kiểm chứng bằng
+`labjury.assert_rubric_store_contract`. Xem
+[docs/rubric-registry.md](docs/rubric-registry.md).
+
 ---
 
 ## Lộ trình
