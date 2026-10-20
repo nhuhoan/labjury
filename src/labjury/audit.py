@@ -228,3 +228,55 @@ def verdict_matches(event: AuditEvent, verdict: Verdict) -> bool:
         and verdict.novel_labels == recorded.get("novel_labels")
         and verdict.reason == recorded.get("reason")
     )
+
+
+# -- reproducibility verification --------------------------------------------
+
+@dataclass(frozen=True)
+class VersionChange:
+    """One component's recorded version against its current one, as
+    ``"Name@version"`` on each side."""
+
+    recorded: str | None
+    current: str | None
+
+
+@dataclass(frozen=True)
+class ReplayReport:
+    """The outcome of verifying a recorded decision against a live policy."""
+
+    verdict_matches: bool
+    drift: dict[str, VersionChange]
+    recorded_verdict: dict | None
+    replayed_verdict: dict
+
+    @property
+    def faithful(self) -> bool:
+        """A trustworthy reproduction: same verdict **and** no version drift."""
+        return self.verdict_matches and not self.drift
+
+
+async def verify_replay(event: AuditEvent, policy) -> ReplayReport:
+    """Replay ``event`` through ``policy`` and verify the reproduction.
+
+    Re-runs the policy over the event's recorded inputs (raising
+    :class:`ValueError` for a cache-hit event, like :func:`replay_decision`),
+    checks the replayed verdict against the recorded one, and detects version
+    drift between the policy recorded on the event and the one passed in. Only
+    the policy stage is replayed — the scorer's output is pinned by the recorded
+    answers. Drift compares ``(name, version)``; ``params`` is configuration, not
+    a version handle, so it is not part of the drift signal.
+    """
+    replayed = await replay_decision(event, policy)
+    matches = verdict_matches(event, replayed)
+    drift: dict[str, VersionChange] = {}
+    recorded = event.provenance.get("policy")
+    current = provenance_of(policy)
+    if recorded is not None and (
+        recorded.name != current.name or recorded.version != current.version
+    ):
+        drift["policy"] = VersionChange(
+            f"{recorded.name}@{recorded.version}",
+            f"{current.name}@{current.version}",
+        )
+    return ReplayReport(matches, drift, event.verdict, verdict_to_dict(replayed))
