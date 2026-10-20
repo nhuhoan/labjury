@@ -269,6 +269,16 @@ mang"); và `lj.ReviewResolution.to_verdict()` của người là verdict cuối
 không bị đụng tới — tự wire là việc của deployer. Xem
 [docs/human-review.md](docs/human-review.md).
 
+### Đánh giá & regression (tùy chọn)
+
+Pipeline có chính xác không, và một thay đổi làm nó tệ đi không?
+`lj.run_evaluation(engine, golden)` chạy một golden set (ground truth `lj.GoldenCase`
+của bạn — tự mang dữ liệu) và trả về `EvalReport` gồm precision/recall/F1 per-label
+và micro/macro cộng exact-match rate. `lj.compare_evals(baseline, candidate)` so hai
+lần chạy để bắt policy regression — chặn CI bằng `assert not
+cmp.regressed(tolerance=…)`. Thuần, deterministic, zero-dep. Xem
+[docs/evaluation.md](docs/evaluation.md).
+
 ---
 
 ## Lộ trình

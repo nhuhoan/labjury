@@ -54,6 +54,15 @@ from labjury.guards import (
 )
 from labjury.secrets import Secret
 from labjury.rubrics import InMemoryRubricStore, Rubric
+from labjury.evaluation import (
+    EvalComparison,
+    EvalReport,
+    GoldenCase,
+    LabelScore,
+    compare_evals,
+    run_evaluation,
+    score_predictions,
+)
 from labjury.review import (
     InMemoryReviewQueue,
     ReviewResolution,
@@ -188,4 +197,12 @@ __all__ = [
     "ReviewQueue",
     "InMemoryReviewQueue",
     "review_task_from_event",
+    # evaluation
+    "LabelScore",
+    "EvalReport",
+    "score_predictions",
+    "GoldenCase",
+    "run_evaluation",
+    "EvalComparison",
+    "compare_evals",
 ]

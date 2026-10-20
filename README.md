@@ -271,6 +271,15 @@ bring-your-own); and a human's `lj.ReviewResolution.to_verdict()` is the final
 verdict. The engine is untouched — wiring it up is deployer orchestration. See
 [docs/human-review.md](docs/human-review.md).
 
+### Evaluation & regression (opt-in)
+
+Is the pipeline accurate, and did a change make it worse? `lj.run_evaluation(engine,
+golden)` runs a golden set (your `lj.GoldenCase` ground truth — bring your own data)
+and returns an `EvalReport` of per-label and micro/macro precision/recall/F1 plus
+exact-match rate. `lj.compare_evals(baseline, candidate)` diffs two runs for policy
+regression — gate your CI with `assert not cmp.regressed(tolerance=…)`. Pure,
+deterministic, zero-dep. See [docs/evaluation.md](docs/evaluation.md).
+
 ---
 
 ## Roadmap
