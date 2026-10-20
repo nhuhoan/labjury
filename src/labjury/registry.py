@@ -17,6 +17,7 @@ _KINDS = (
     "sinks",
     "taxonomies",
     "caches",
+    "audit_logs",
 )
 
 _REGISTRY: dict[str, dict[str, Callable[[], Any]]] = {}

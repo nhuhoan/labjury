@@ -16,9 +16,11 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable, Union
 
-from labjury.plugins import TaxonomyStore
+from labjury.audit import AuditEvent
+from labjury.plugins import AuditLog, TaxonomyStore
 
 StoreFactory = Callable[[], Union[TaxonomyStore, Awaitable[TaxonomyStore]]]
+AuditLogFactory = Callable[[], AuditLog]
 
 
 async def _make(factory: StoreFactory) -> TaxonomyStore:
@@ -80,3 +82,30 @@ async def assert_taxonomy_store_contract(make_store: StoreFactory) -> None:
     store = await _make(make_store)
     await store.propose("m", {"src": "test"})
     assert "m" in await store.proposed_labels()
+
+
+async def assert_audit_log_contract(make_log: AuditLogFactory) -> None:
+    """Drive a fresh audit log from ``make_log`` through the append-only contract.
+
+    Raises :class:`AssertionError` on any violation. ``NullAuditLog`` is the
+    opt-out and is exempt (it retains nothing by design).
+    """
+    log = make_log()
+
+    # append-only: no mutation surface.
+    assert not hasattr(type(log), "update")
+    assert not hasattr(type(log), "delete")
+
+    # empty for an unknown id.
+    assert await log.by_correlation("missing") == []
+
+    # records are retrievable per correlation id, in insertion order.
+    e1 = AuditEvent("a", "fp-a-1")
+    e2 = AuditEvent("a", "fp-a-2")
+    e3 = AuditEvent("b", "fp-b-1")
+    await log.record(e1)
+    await log.record(e3)
+    await log.record(e2)
+    assert await log.by_correlation("a") == [e1, e2]
+    assert await log.by_correlation("b") == [e3]
+    assert await log.by_correlation("missing") == []

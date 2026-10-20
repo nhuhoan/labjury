@@ -12,7 +12,12 @@ from labjury.decisions import (
     Question,
     ScoreQuestion,
 )
-from labjury.defaults import CollectingSink, InMemoryCache
+from labjury.defaults import (
+    CollectingSink,
+    InMemoryAuditLog,
+    InMemoryCache,
+    NullAuditLog,
+)
 from labjury.engine import Engine
 from labjury.observability import InMemoryObserver, Observer
 from labjury.plugins import (
@@ -39,7 +44,10 @@ from labjury.state import (
     register_content_type,
 )
 from labjury.taxonomy import InMemoryTaxonomyStore
-from labjury.testing import assert_taxonomy_store_contract
+from labjury.testing import (
+    assert_audit_log_contract,
+    assert_taxonomy_store_contract,
+)
 
 __all__ = [
     # state
@@ -91,6 +99,9 @@ __all__ = [
     # audit
     "AuditEvent",
     "ProvenanceRef",
+    "NullAuditLog",
+    "InMemoryAuditLog",
     # testing helpers
     "assert_taxonomy_store_contract",
+    "assert_audit_log_contract",
 ]

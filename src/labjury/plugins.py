@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
+from labjury.audit import AuditEvent
 from labjury.decisions import Answer, Candidate, Question
 from labjury.results import ItemResult, Verdict
 from labjury.state import Item, State
@@ -90,3 +91,13 @@ class Cache(Protocol):
     async def get(self, key: str) -> Verdict | None: ...
 
     async def put(self, key: str, verdict: Verdict) -> None: ...
+
+
+@runtime_checkable
+class AuditLog(Protocol):
+    """Append-only record of decisions. No update or delete — immutability is
+    the point."""
+
+    async def record(self, event: AuditEvent) -> None: ...
+
+    async def by_correlation(self, correlation_id: str) -> list[AuditEvent]: ...
