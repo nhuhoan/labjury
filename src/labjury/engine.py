@@ -86,6 +86,7 @@ class Engine:
         except Exception as exc:  # partial-failure: never let one item escape
             result = ItemResult(item.id, Status.FAILED, error=str(exc))
         result.latency_ms = (time.perf_counter() - start) * 1000.0
+        result.tenant = item.tenant
         await self._finish(result)
         return result
 
@@ -96,7 +97,7 @@ class Engine:
             if len(admitted) < self._max_concurrency:
                 admitted.append(item)
             else:
-                rl = ItemResult(item.id, Status.RETRY_LATER)
+                rl = ItemResult(item.id, Status.RETRY_LATER, tenant=item.tenant)
                 self._observer.on_retry_later(rl)
                 results.append(rl)
         done = await asyncio.gather(
@@ -104,7 +105,11 @@ class Engine:
         )
         for item, outcome in zip(admitted, done):
             if isinstance(outcome, BaseException):
-                results.append(ItemResult(item.id, Status.FAILED, error=str(outcome)))
+                results.append(
+                    ItemResult(
+                        item.id, Status.FAILED, error=str(outcome), tenant=item.tenant
+                    )
+                )
             else:
                 results.append(outcome)
         return results
@@ -120,7 +125,11 @@ class Engine:
         if cached is not None:
             await self._record_safe(
                 AuditEvent(
-                    item.id, key, from_cache=True, verdict=verdict_to_dict(cached)
+                    item.id,
+                    key,
+                    from_cache=True,
+                    verdict=verdict_to_dict(cached),
+                    tenant=item.tenant,
                 )
             )
             return ItemResult(item.id, self._status_for(cached.action), verdict=cached)
@@ -162,6 +171,7 @@ class Engine:
                     "policy": provenance_of(self._policy),
                 },
                 verdict=verdict_to_dict(verdict),
+                tenant=item.tenant,
             )
         )
         return ItemResult(item.id, self._status_for(verdict.action), verdict=verdict)

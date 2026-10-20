@@ -201,3 +201,15 @@ async def test_verify_replay_of_cache_hit_raises():
     event = AuditEvent("i1", "fp", from_cache=True, verdict=verdict_to_dict(v))
     with pytest.raises(ValueError):
         await verify_replay(event, _FixedPolicy(v))
+
+
+def test_audit_event_tenant_roundtrip():
+    e = AuditEvent("c1", "fp", tenant="acme")
+    assert e.to_dict()["tenant"] == "acme"
+    assert AuditEvent.from_dict(e.to_dict()).tenant == "acme"
+
+
+def test_audit_event_tenant_defaults_none():
+    d = AuditEvent("c1", "fp").to_dict()
+    d.pop("tenant", None)
+    assert AuditEvent.from_dict(d).tenant is None

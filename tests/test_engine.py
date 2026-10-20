@@ -267,3 +267,12 @@ async def test_pre_admission_retry_later_has_no_latency():
     results = await eng.process_batch([Item(f"i{n}", {"text": "t"}) for n in range(4)])
     retry = [r for r in results if r.status is Status.RETRY_LATER]
     assert retry and all(r.latency_ms is None for r in retry)
+
+
+async def test_tenant_flows_to_result_and_audit():
+    audit = InMemoryAuditLog()
+    eng = make_engine(audit=audit)
+    result = await eng.process(Item("i1", {"text": "x"}, tenant="acme"))
+    assert result.tenant == "acme"
+    events = await audit.by_correlation("i1")
+    assert events and events[0].tenant == "acme"
