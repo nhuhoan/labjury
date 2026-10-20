@@ -172,6 +172,15 @@ nối `AuditEvent.to_dict`/`from_dict`, kiểm chứng bằng
 (`labjury.contrib.sqlite_audit.SqliteAuditLog`, không cần extra). Xem
 [docs/audit-trail.md](docs/audit-trail.md).
 
+### Metrics & telemetry (tùy chọn)
+
+Mỗi kết cục terminal đi qua một `Observer`, và mỗi quyết định mang theo
+`latency_ms` đầu-cuối. Có sẵn một exporter Prometheus tham chiếu
+(`labjury.contrib.prometheus_observer.PrometheusObserver`, `pip install
+labjury[prometheus]`) — counter theo kết cục cộng histogram độ trễ, còn endpoint
+`/metrics` là của bạn. Cắm backend bất kỳ (OpenTelemetry, Datadog) qua cùng
+protocol `Observer`. Xem [docs/observability.md](docs/observability.md).
+
 ---
 
 ## Lộ trình

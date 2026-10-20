@@ -174,6 +174,15 @@ and the `AuditEvent.to_dict`/`from_dict` seam, verified with
 built-in (`labjury.contrib.sqlite_audit.SqliteAuditLog`, no extra needed). See
 [docs/audit-trail.md](docs/audit-trail.md).
 
+### Metrics & telemetry (opt-in)
+
+Every terminal outcome flows through an `Observer`, and each decision carries
+its end-to-end `latency_ms`. A Prometheus reference exporter ships built-in
+(`labjury.contrib.prometheus_observer.PrometheusObserver`, `pip install
+labjury[prometheus]`) — outcome counters plus a latency histogram, with you
+owning the `/metrics` server. Bring any backend (OpenTelemetry, Datadog) via the
+same `Observer` protocol. See [docs/observability.md](docs/observability.md).
+
 ---
 
 ## Roadmap
