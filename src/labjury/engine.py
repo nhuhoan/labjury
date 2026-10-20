@@ -25,6 +25,7 @@ from labjury.plugins import (
     ContextBuilder,
     DecisionPolicy,
     Proposer,
+    ProposalContext,
     Scorer,
     Sink,
     TaxonomyStore,
@@ -111,10 +112,11 @@ class Engine:
 
         route = self._router.route(state)
         if route.use_proposer:
+            context = ProposalContext(frozenset(await self._taxonomy.known_labels()))
             candidates = list(self._standing)
             for proposer in self._proposers:
                 if "*" in proposer.accepts or state.modalities() <= set(proposer.accepts):
-                    candidates.extend(await proposer.propose(state))
+                    candidates.extend(await proposer.propose(state, context))
         else:
             candidates = list(self._standing)
             if not candidates:

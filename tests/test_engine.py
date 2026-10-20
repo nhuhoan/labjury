@@ -44,8 +44,19 @@ class _FoodProposer:
     def __init__(self):
         self.calls = 0
 
-    async def propose(self, state):
+    async def propose(self, state, context):
         self.calls += 1
+        return [Candidate("food", "tag", ChoiceQuestion("food_q", "food?", ["food"]))]
+
+
+class _CapturingProposer:
+    accepts = frozenset({"*"})
+
+    def __init__(self):
+        self.seen_known_labels = None
+
+    async def propose(self, state, context):
+        self.seen_known_labels = set(context.known_labels)
         return [Candidate("food", "tag", ChoiceQuestion("food_q", "food?", ["food"]))]
 
 
@@ -172,3 +183,23 @@ async def test_fast_path_without_standing_candidates_fails_item():
     eng = _image_engine(standing_candidates=None, scorer=_ImageScorer(answer=None))
     r = await eng.process(Item("v2", {"image": b"img"}))
     assert r.status is Status.FAILED
+
+
+async def test_proposer_receives_known_labels_from_taxonomy():
+    # a proposer should be able to reuse the official vocabulary instead of
+    # inventing synonyms, so the engine hands it the taxonomy's known labels.
+    taxonomy = InMemoryTaxonomyStore()
+    await taxonomy.promote("food")
+    proposer = _CapturingProposer()
+    eng = Engine(
+        context_builders=[_TextBuilder()],
+        proposers=[proposer],
+        scorers=[_FakeScorer()],
+        policy=RecallBiasedPolicy(),
+        sink=CollectingSink(),
+        cache=InMemoryCache(),
+        taxonomy=taxonomy,
+        observer=InMemoryObserver(),
+    )
+    await eng.process(Item("i1", {"text": "x"}))
+    assert proposer.seen_known_labels == {"food"}

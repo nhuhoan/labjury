@@ -98,7 +98,7 @@ class TextBuilder:
 
 class FoodProposer:
     accepts = frozenset({"*"})
-    async def propose(self, state):
+    async def propose(self, state, context):   # context.known_labels = từ vựng chính thức
         return [lj.Candidate("food", "tag", lj.ChoiceQuestion("food_q", "food?", ["food"]))]
 
 engine = lj.Engine(

@@ -21,7 +21,7 @@ class StarScorer:
 class TextProposer:
     accepts = frozenset({"text"})
 
-    async def propose(self, state):
+    async def propose(self, state, context):
         return []
 
 

@@ -8,11 +8,28 @@ modalities it consumes; ``frozenset({"*"})`` means "any".
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from labjury.decisions import Answer, Candidate, Question
 from labjury.results import ItemResult, Verdict
 from labjury.state import Item, State
+
+
+@dataclass(frozen=True)
+class ProposalContext:
+    """Read-only context handed to a :class:`Proposer` for one item.
+
+    A single extensible container so the core can give proposers more to work
+    with over time (locale, budget, …) *without* changing the ``propose``
+    signature and breaking third-party plugins. ``known_labels`` is the
+    taxonomy's official vocabulary, offered so a proposer can reuse an
+    existing label instead of inventing a near-duplicate. It is a
+    ``frozenset`` by design: proposers read the vocabulary, they never mutate
+    it — writing to the taxonomy stays solely with the decision policy.
+    """
+
+    known_labels: frozenset[str] = field(default_factory=frozenset)
 
 
 @runtime_checkable
@@ -27,7 +44,9 @@ class ContextBuilder(Protocol):
 class Proposer(Protocol):
     accepts: frozenset[str]
 
-    async def propose(self, state: State) -> list[Candidate]: ...
+    async def propose(
+        self, state: State, context: ProposalContext
+    ) -> list[Candidate]: ...
 
 
 @runtime_checkable

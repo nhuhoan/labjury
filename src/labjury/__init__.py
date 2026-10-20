@@ -19,6 +19,7 @@ from labjury.plugins import (
     Cache,
     ContextBuilder,
     DecisionPolicy,
+    ProposalContext,
     Proposer,
     Scorer,
     Sink,
@@ -60,6 +61,7 @@ __all__ = [
     # plugin protocols
     "ContextBuilder",
     "Proposer",
+    "ProposalContext",
     "Scorer",
     "DecisionPolicy",
     "Sink",

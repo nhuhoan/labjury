@@ -14,7 +14,7 @@ class _TextBuilder:
 class _FoodProposer:
     accepts = frozenset({"*"})
 
-    async def propose(self, state):
+    async def propose(self, state, context):
         return [Candidate("food", "tag", ChoiceQuestion("food_q", "food?", ["food"]))]
 
 
@@ -30,6 +30,8 @@ def test_public_surface_importable():
         "CollectingSink",
         "InMemoryObserver",
         "Router",
+        "Proposer",
+        "ProposalContext",
         "register",
         "load_entry_points",
     ]:
