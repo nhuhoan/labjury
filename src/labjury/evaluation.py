@@ -120,6 +120,27 @@ def score_predictions(
 
 
 @dataclass(frozen=True)
+class GoldenCase:
+    """A ground-truth example: an item and the labels a correct pipeline should emit."""
+
+    item: Item
+    expected_labels: frozenset[str]
+
+
+async def run_evaluation(engine, cases: Iterable[GoldenCase]) -> EvalReport:
+    """Run a golden set through ``engine`` and score the verdict labels.
+
+    A result with no verdict (e.g. a ``FAILED`` item) is scored as an empty
+    prediction — a pipeline that fails to decide earns no credit."""
+    pairs: list[tuple[set[str], set[str]]] = []
+    for case in cases:
+        result = await engine.process(case.item)
+        predicted = set(result.verdict.labels) if result.verdict else set()
+        pairs.append((set(case.expected_labels), predicted))
+    return score_predictions(pairs)
+
+
+@dataclass(frozen=True)
 class EvalComparison:
     """A baseline-vs-candidate diff for policy-regression gating."""
 

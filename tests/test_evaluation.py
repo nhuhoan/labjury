@@ -2,10 +2,31 @@ import pytest
 
 from labjury.evaluation import (
     EvalReport,
+    GoldenCase,
     LabelScore,
     compare_evals,
+    run_evaluation,
     score_predictions,
 )
+from labjury.results import Action, ItemResult, Status, Verdict
+from labjury.state import Item
+
+
+class _FakeEngine:
+    """Returns a verdict with chosen labels per item id; id mapped to None -> FAILED."""
+
+    def __init__(self, labels_by_id):
+        self._labels = labels_by_id
+
+    async def process(self, item):
+        labels = self._labels.get(item.id)
+        if labels is None:
+            return ItemResult(item.id, Status.FAILED, error="boom")
+        return ItemResult(
+            item.id,
+            Status.DECIDED,
+            verdict=Verdict(Action.BLOCK, list(labels), {}, [], "x"),
+        )
 
 
 def test_worked_example():
@@ -64,3 +85,26 @@ def test_tolerance():
     cmp = compare_evals(base, cand)
     assert cmp.regressed(tolerance=0.0) is True
     assert cmp.regressed(tolerance=1.0) is False
+
+
+async def test_run_evaluation_matches_score_predictions():
+    engine = _FakeEngine({"i1": {"spam"}, "i2": {"spam", "ads"}})
+    cases = [
+        GoldenCase(Item("i1", {}), frozenset({"spam", "nsfw"})),
+        GoldenCase(Item("i2", {}), frozenset({"spam"})),
+    ]
+    report = await run_evaluation(engine, cases)
+    expected = score_predictions([
+        ({"spam", "nsfw"}, {"spam"}),
+        ({"spam"}, {"spam", "ads"}),
+    ])
+    assert report.per_label.keys() == expected.per_label.keys()
+    assert report.micro_f1 == expected.micro_f1
+    assert report.n_cases == 2
+
+
+async def test_failed_result_is_empty_prediction():
+    engine = _FakeEngine({"i1": None})     # FAILED -> no verdict
+    report = await run_evaluation(engine, [GoldenCase(Item("i1", {}), frozenset({"spam"}))])
+    assert report.per_label["spam"].fn == 1
+    assert report.per_label["spam"].recall == 0.0
