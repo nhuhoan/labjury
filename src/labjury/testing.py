@@ -14,11 +14,25 @@ not part of it.
 
 from __future__ import annotations
 
+import inspect
 from typing import Awaitable, Callable, Union
 
 from labjury.audit import AuditEvent
 from labjury.decisions import NoulQuestion
-from labjury.plugins import AuditLog, RubricStore, TaxonomyStore
+from labjury.plugins import (
+    AuditLog,
+    Cache,
+    ContextBuilder,
+    DecisionPolicy,
+    Guard,
+    Proposer,
+    Redactor,
+    ReviewQueue,
+    RubricStore,
+    Scorer,
+    Sink,
+    TaxonomyStore,
+)
 
 StoreFactory = Callable[[], Union[TaxonomyStore, Awaitable[TaxonomyStore]]]
 AuditLogFactory = Callable[[], AuditLog]
@@ -159,3 +173,60 @@ async def assert_rubric_store_contract(make_store: RubricStoreFactory) -> None:
         pass
     else:
         raise AssertionError("re-publishing a version with a different question must raise")
+
+
+# -- stage-plugin structural conformance -------------------------------------
+
+# Each plugin protocol's async methods and capability attributes. These are what
+# a bare ``isinstance`` against a @runtime_checkable protocol does NOT verify
+# (it checks member *presence*, not that a method is async or an attr is typed).
+_ASYNC_METHODS: dict[type, tuple[str, ...]] = {
+    ContextBuilder: ("build",),
+    Proposer: ("propose",),
+    Scorer: ("score",),
+    DecisionPolicy: ("decide",),
+    Sink: ("emit",),
+    Cache: ("get", "put"),
+    TaxonomyStore: ("is_known", "propose", "promote", "known_labels", "proposed_labels"),
+    AuditLog: ("record", "by_correlation"),
+    RubricStore: ("register", "resolve", "get", "history"),
+    Redactor: ("redact",),
+    Guard: ("inspect",),
+    ReviewQueue: ("enqueue",),
+}
+
+_CAPABILITY_ATTRS: dict[type, tuple[str, ...]] = {
+    ContextBuilder: ("accepts", "produces"),
+    Proposer: ("accepts",),
+    Scorer: ("accepts",),
+    Redactor: ("accepts",),
+}
+
+
+def assert_plugin_conforms(obj: object, protocol: type) -> None:
+    """Assert that ``obj`` is a valid LabJury plugin for ``protocol``.
+
+    Adds exactly what a bare ``isinstance`` against the ``@runtime_checkable``
+    protocol misses: that every async method the protocol defines is an actual
+    coroutine function, and that declared capability attributes (``accepts`` /
+    ``produces``) are ``frozenset``s. Structural member *presence* is covered by
+    the ``isinstance`` check itself. Raises :class:`AssertionError` on the first
+    violation. Behavioral correctness (does a scorer score *well*?) is
+    domain-specific and not checked here.
+    """
+    assert isinstance(obj, protocol), (
+        f"{type(obj).__name__} is not a structural {protocol.__name__} "
+        "(a required member is missing)"
+    )
+    for name in _ASYNC_METHODS.get(protocol, ()):
+        method = getattr(obj, name)
+        assert inspect.iscoroutinefunction(method), (
+            f"{protocol.__name__}.{name} must be an async method on "
+            f"{type(obj).__name__}"
+        )
+    for attr in _CAPABILITY_ATTRS.get(protocol, ()):
+        value = getattr(obj, attr)
+        assert isinstance(value, frozenset), (
+            f"{protocol.__name__}.{attr} must be a frozenset on "
+            f"{type(obj).__name__}, got {type(value).__name__}"
+        )
