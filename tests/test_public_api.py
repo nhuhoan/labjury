@@ -62,6 +62,13 @@ def test_public_surface_importable():
         "ReviewQueue",
         "InMemoryReviewQueue",
         "review_task_from_event",
+        "LabelScore",
+        "EvalReport",
+        "score_predictions",
+        "GoldenCase",
+        "run_evaluation",
+        "EvalComparison",
+        "compare_evals",
         "register",
         "load_entry_points",
     ]:
