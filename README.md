@@ -260,6 +260,17 @@ counts and latency per tenant (the model-agnostic cost signal; multiply by your
 model's rate for dollars), and `lj.FanOutObserver` runs it beside a Prometheus
 observer. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
 
+### Human-in-the-loop review (opt-in)
+
+When a policy returns `REVIEW`, a human should decide. LabJury owns the hand-off
+contract — **stateless and fire-and-forget** — not the queue or the workflow.
+`lj.review_task_from_event(event)` packages a decision into a portable `ReviewTask`;
+`queue.enqueue(task)` hands it to your backend through the one-method
+`lj.ReviewQueue` seam (`lj.InMemoryReviewQueue` is the reference; SQS/DB/Pub-Sub are
+bring-your-own); and a human's `lj.ReviewResolution.to_verdict()` is the final
+verdict. The engine is untouched — wiring it up is deployer orchestration. See
+[docs/human-review.md](docs/human-review.md).
+
 ---
 
 ## Roadmap
