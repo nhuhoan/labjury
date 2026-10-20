@@ -188,7 +188,10 @@ Mọi plugin remote đều có thể được bọc để tăng độ tin cậy 
 retry kèm backoff, và circuit breaker (`breaker(retry(timeout(call)))`) lên bất kỳ
 `Scorer`/`Proposer`/`ContextBuilder` nào — không phụ thuộc model, không thêm phụ
 thuộc. Khi bỏ cuộc, lỗi nổi lên thành `ItemResult(FAILED)` để bên gọi đưa lại hàng
-đợi. Xem [docs/reliability.md](docs/reliability.md).
+đợi. Để failover qua nhiều model, bọc chúng trong `labjury.FailoverScorer` /
+`FailoverProposer` / `FailoverContextBuilder` (thử lần lượt, cái nào xong trước
+thì thắng; mỗi thành viên tự nó có thể là một `Reliable*`). Xem
+[docs/reliability.md](docs/reliability.md).
 
 ### Che dữ liệu cá nhân (tùy chọn)
 

@@ -76,10 +76,34 @@ engine = lj.Engine(
 delegate `accepts` (and `produces`, for context builders) to the inner plugin, so
 a wrapped plugin routes exactly like the plugin it wraps.
 
-## What this is not
+## Failover across models
 
-Failing over across **several same-kind models** — try model B when model A
-gives up — is a *sibling composition*, not this standard. It belongs in a
-separate wrapper that holds a list of plugins; each one it holds can itself be a
-`Reliable*` wrapper. This step defines per-plugin reliability; failover builds on
-top of it.
+Per-plugin reliability keeps one model alive through its own flakiness. Failing
+over to a **different** model when the primary gives up is the sibling
+composition: `FailoverScorer`, `FailoverProposer`, `FailoverContextBuilder` hold
+an ordered list of interchangeable same-kind plugins and try them in turn,
+returning the first that does not raise.
+
+```python
+scorer = lj.FailoverScorer([
+    lj.ReliableScorer(primary_model),     # tried first; its own timeout/retry/breaker
+    lj.ReliableScorer(backup_model),      # used only if the primary raises
+])
+```
+
+- Members are tried **in order**; the first success short-circuits the rest.
+- A member raising (including a `Reliable*` that exhausted its retries or whose
+  breaker is open) moves on to the next.
+- **All members raise → the last exception propagates** → the engine's
+  partial-failure path yields `ItemResult(FAILED)`. Same fail-closed contract as
+  the rest of the family.
+- `asyncio.CancelledError` from a member propagates immediately — it is not a
+  failover trigger.
+- An empty list is a `ValueError`; `accepts` (and `produces` for the context
+  builder) are delegated from the first member, so members must be
+  interchangeable (same modality).
+
+Failover composes *with* `Reliable*` — each member is typically a `Reliable*`
+wrapper, so every model gets its own timeout/retry/breaker before failover
+reaches for the next. This is sequential primary→fallback, not parallel
+hedging.

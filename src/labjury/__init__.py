@@ -84,6 +84,9 @@ from labjury.audit import (
 from labjury.policies import RecallBiasedPolicy
 from labjury.reliability import (
     CircuitOpenError,
+    FailoverContextBuilder,
+    FailoverProposer,
+    FailoverScorer,
     ReliableContextBuilder,
     ReliableProposer,
     ReliableScorer,
@@ -176,6 +179,9 @@ __all__ = [
     "ReliableProposer",
     "ReliableContextBuilder",
     "CircuitOpenError",
+    "FailoverScorer",
+    "FailoverProposer",
+    "FailoverContextBuilder",
     # pii redaction
     "Redactor",
     "RedactingScorer",
