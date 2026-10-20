@@ -307,6 +307,16 @@ LabJury theo SemVer: public API chính là `labjury.__all__`, và các protocol 
   cơ chế bảo mật tích hợp sẵn làm được và không làm được gì.
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant v2.1.
 
+### Service gRPC & client đa ngôn ngữ (tùy chọn)
+
+Dùng LabJury từ Java, Go, PHP, hay Python qua một **service gRPC stateless** bọc
+engine. Hợp đồng chỉ là một file —
+[`proto/labjury/v1/labjury.proto`](proto/labjury/v1/labjury.proto) — và mọi client đều
+sinh từ nó (`protoc`), nên phía tiêu thụ không cần Python. `pip install
+"labjury[grpc]"`, `bash scripts/gen_proto.sh`, rồi `asyncio.run(serve(engine))`. Logic
+được test nằm ở `labjury.service.translation`/`handler` thuần; lõi vẫn zero-dependency
+(`import labjury` không kéo grpc). Xem [docs/service.md](docs/service.md).
+
 ---
 
 ## Giấy phép

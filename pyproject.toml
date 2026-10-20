@@ -16,6 +16,7 @@ dependencies = []
 test = ["pytest>=8", "pytest-asyncio>=0.23"]
 redis = ["redis>=5"]
 prometheus = ["prometheus_client>=0.19"]
+grpc = ["grpcio>=1.60", "grpcio-tools>=1.60", "protobuf>=4"]
 
 [project.urls]
 Homepage = "https://github.com/nhuhoan/labjury"
