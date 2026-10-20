@@ -51,3 +51,34 @@ class GuardedProposer:
     async def propose(self, state, context):
         await self._guard.inspect(state)
         return await self._inner.propose(state, context)
+
+
+_INJECTION_PATTERNS = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"ignore\s+(all\s+)?(previous|above|prior)\s+instructions",
+        r"disregard\s+(the\s+)?(above|previous|prior)",
+        r"you\s+are\s+now",
+        r"new\s+instructions\s*:",
+        r"system\s+prompt",
+    )
+]
+
+
+class HeuristicInjectionGuard:
+    """Zero-dependency baseline guard for obvious prompt-injection phrases.
+
+    Scans text for well-known override patterns ("ignore previous
+    instructions", …). **Baseline only, not a real defense**: trivially bypassed
+    by paraphrase, encoding, translation, or non-text channels. Plug a proper
+    detector (Rebuff, Lakera, a classifier) behind the
+    :class:`~labjury.plugins.Guard` protocol for anything that matters.
+    """
+
+    async def inspect(self, state: State) -> None:
+        for c in state.get("text"):
+            for pat in _INJECTION_PATTERNS:
+                if pat.search(c.payload):
+                    raise GuardRejected(
+                        f"possible prompt injection: matched {pat.pattern!r}"
+                    )
