@@ -7,3 +7,6 @@ venv/
 dist/
 build/
 .ruff_cache/
+
+# generated gRPC stubs (produced by scripts/gen_proto.sh from proto/)
+/src/labjury/v1/

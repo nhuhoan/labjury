@@ -308,6 +308,17 @@ with `lj.assert_plugin_conforms(obj, Scorer)` (stage plugins) or the
   what the built-in security mechanisms do and don't cover.
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant v2.1.
 
+### gRPC service & polyglot clients (opt-in)
+
+Consume LabJury from Java, Go, PHP, or Python over a **stateless gRPC service** that
+wraps the engine. The contract is one file —
+[`proto/labjury/v1/labjury.proto`](proto/labjury/v1/labjury.proto) — and every client
+is generated from it (`protoc`), so no consumer needs Python. `pip install
+"labjury[grpc]"`, `bash scripts/gen_proto.sh`, then `asyncio.run(serve(engine))`. The
+tested logic lives in pure `labjury.service.translation`/`handler`; the core stays
+zero-dependency (importing `labjury` never pulls in grpc). See
+[docs/service.md](docs/service.md).
+
 ---
 
 ## License
