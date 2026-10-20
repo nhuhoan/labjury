@@ -183,6 +183,15 @@ labjury[prometheus]`) — outcome counters plus a latency histogram, with you
 owning the `/metrics` server. Bring any backend (OpenTelemetry, Datadog) via the
 same `Observer` protocol. See [docs/observability.md](docs/observability.md).
 
+### Reliable remote plugins (opt-in)
+
+Any remote plugin can be wrapped for reliability — `labjury.ReliableScorer`,
+`ReliableProposer`, `ReliableContextBuilder` apply per-attempt timeout, retry
+with backoff, and a circuit breaker (`breaker(retry(timeout(call)))`) to any
+`Scorer`/`Proposer`/`ContextBuilder`, model-agnostic and zero-dependency. A
+give-up surfaces as an `ItemResult(FAILED)` for the caller to re-enqueue. See
+[docs/reliability.md](docs/reliability.md).
+
 ---
 
 ## Roadmap
