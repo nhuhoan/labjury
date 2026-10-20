@@ -1,0 +1,142 @@
+"""Immutable audit records and their serialization seam.
+
+An :class:`AuditEvent` captures everything needed to explain and reproduce one
+engine decision. It is JSON-serializable through :meth:`AuditEvent.to_dict` /
+:meth:`AuditEvent.from_dict` — the single seam every storage backend touches,
+so a backend never needs to understand LabJury's internal types.
+
+Replay (:func:`replay_decision`) lives in this module too: it re-runs a
+decision policy over a recorded event's inputs to reproduce the verdict.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+from labjury.decisions import (
+    Answer,
+    Candidate,
+    ChoiceQuestion,
+    NoulQuestion,
+    Question,
+    ScoreQuestion,
+)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass(frozen=True)
+class ProvenanceRef:
+    """Which plugin produced/transformed a decision, and how it was configured."""
+
+    name: str
+    version: str | None = None
+    params: dict | None = None
+
+    def to_dict(self) -> dict:
+        return {"name": self.name, "version": self.version, "params": self.params}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ProvenanceRef":
+        return cls(d["name"], d.get("version"), d.get("params"))
+
+
+@dataclass(frozen=True)
+class AuditEvent:
+    """One immutable record of a decision (or a cache-served reuse of one)."""
+
+    correlation_id: str
+    input_fingerprint: str
+    modalities: frozenset[str] = frozenset()
+    from_cache: bool = False
+    used_proposer: bool | None = None
+    candidates: tuple[dict, ...] = ()
+    answers: tuple[dict, ...] = ()
+    known_labels: frozenset[str] = frozenset()
+    provenance: dict[str, ProvenanceRef] = field(default_factory=dict)
+    verdict: dict | None = None
+    event_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    occurred_at: str = field(default_factory=_now_iso)
+
+    def to_dict(self) -> dict:
+        return {
+            "event_id": self.event_id,
+            "occurred_at": self.occurred_at,
+            "correlation_id": self.correlation_id,
+            "input_fingerprint": self.input_fingerprint,
+            "modalities": sorted(self.modalities),
+            "from_cache": self.from_cache,
+            "used_proposer": self.used_proposer,
+            "candidates": [dict(c) for c in self.candidates],
+            "answers": [dict(a) for a in self.answers],
+            "known_labels": sorted(self.known_labels),
+            "provenance": {k: v.to_dict() for k, v in self.provenance.items()},
+            "verdict": self.verdict,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AuditEvent":
+        return cls(
+            correlation_id=d["correlation_id"],
+            input_fingerprint=d["input_fingerprint"],
+            modalities=frozenset(d.get("modalities", ())),
+            from_cache=d.get("from_cache", False),
+            used_proposer=d.get("used_proposer"),
+            candidates=tuple(d.get("candidates", ())),
+            answers=tuple(d.get("answers", ())),
+            known_labels=frozenset(d.get("known_labels", ())),
+            provenance={
+                k: ProvenanceRef.from_dict(v) for k, v in d.get("provenance", {}).items()
+            },
+            verdict=d.get("verdict"),
+            event_id=d["event_id"],
+            occurred_at=d["occurred_at"],
+        )
+
+
+# -- domain-object serialization (the event stores plain dicts) --------------
+
+def question_to_dict(q: Question) -> dict:
+    if isinstance(q, ChoiceQuestion):
+        return {"type": "choice", "key": q.key, "prompt": q.prompt, "options": list(q.options)}
+    if isinstance(q, ScoreQuestion):
+        return {"type": "score", "key": q.key, "prompt": q.prompt, "levels": list(q.levels)}
+    if isinstance(q, NoulQuestion):
+        return {"type": "noul", "key": q.key, "prompt": q.prompt}
+    raise TypeError(f"unserializable question type: {type(q).__name__}")
+
+
+def question_from_dict(d: dict) -> Question:
+    kind = d["type"]
+    if kind == "choice":
+        return ChoiceQuestion(d["key"], d["prompt"], list(d["options"]))
+    if kind == "score":
+        return ScoreQuestion(d["key"], d["prompt"], list(d["levels"]))
+    if kind == "noul":
+        return NoulQuestion(d["key"], d["prompt"])
+    raise ValueError(f"unknown question type: {kind!r}")
+
+
+def candidate_to_dict(c: Candidate) -> dict:
+    return {"label": c.label, "kind": c.kind, "question": question_to_dict(c.question)}
+
+
+def candidate_from_dict(d: dict) -> Candidate:
+    return Candidate(d["label"], d["kind"], question_from_dict(d["question"]))
+
+
+def answer_to_dict(a: Answer) -> dict:
+    return {
+        "key": a.key,
+        "value": a.value,
+        "confidence": a.confidence,
+        "distribution": a.distribution,
+    }
+
+
+def answer_from_dict(d: dict) -> Answer:
+    return Answer(d["key"], d["value"], d["confidence"], d.get("distribution"))

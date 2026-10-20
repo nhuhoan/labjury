@@ -25,6 +25,7 @@ from labjury.plugins import (
     Sink,
     TaxonomyStore,
 )
+from labjury.audit import AuditEvent, ProvenanceRef
 from labjury.policies import RecallBiasedPolicy
 from labjury.registry import available, clear, get, load_entry_points, register
 from labjury.results import Action, ItemResult, Status, Verdict
@@ -87,6 +88,9 @@ __all__ = [
     "CollectingSink",
     "InMemoryObserver",
     "LLMJudgeScorer",
+    # audit
+    "AuditEvent",
+    "ProvenanceRef",
     # testing helpers
     "assert_taxonomy_store_contract",
 ]
