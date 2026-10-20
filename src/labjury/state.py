@@ -71,3 +71,4 @@ class Item:
     id: str
     raw: Any
     meta: dict | None = None
+    tenant: str | None = None

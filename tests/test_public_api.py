@@ -54,6 +54,9 @@ def test_public_surface_importable():
         "verify_replay",
         "ReplayReport",
         "VersionChange",
+        "TenantUsage",
+        "PerTenantUsage",
+        "FanOutObserver",
         "register",
         "load_entry_points",
     ]:

@@ -61,6 +61,7 @@ class AuditEvent:
     known_labels: frozenset[str] = frozenset()
     provenance: dict[str, ProvenanceRef] = field(default_factory=dict)
     verdict: dict | None = None
+    tenant: str | None = None
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     occurred_at: str = field(default_factory=_now_iso)
 
@@ -78,6 +79,7 @@ class AuditEvent:
             "known_labels": sorted(self.known_labels),
             "provenance": {k: v.to_dict() for k, v in self.provenance.items()},
             "verdict": self.verdict,
+            "tenant": self.tenant,
         }
 
     @classmethod
@@ -95,6 +97,7 @@ class AuditEvent:
                 k: ProvenanceRef.from_dict(v) for k, v in d.get("provenance", {}).items()
             },
             verdict=d.get("verdict"),
+            tenant=d.get("tenant"),
             event_id=d["event_id"],
             occurred_at=d["occurred_at"],
         )

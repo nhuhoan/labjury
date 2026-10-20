@@ -39,3 +39,4 @@ class ItemResult:
     verdict: Verdict | None = None
     error: str | None = None
     latency_ms: float | None = None
+    tenant: str | None = None
