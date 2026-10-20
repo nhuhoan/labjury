@@ -46,6 +46,10 @@ recorded, not reproduced). So you can explain *why* a verdict happened, and test
 what a policy change would have done to historical decisions. Replaying a
 `from_cache` event raises `ValueError` — replay the original decision's event.
 
+For a one-line *verification* — did the verdict reproduce, and has the policy
+version drifted since? — use `verify_replay`, which composes replay with a version
+diff into a `ReplayReport`. See [reproducibility.md](reproducibility.md).
+
 ## Bring your own storage
 
 LabJury ships **no database backend** on purpose: every company has its own

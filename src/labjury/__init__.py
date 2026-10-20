@@ -47,7 +47,15 @@ from labjury.guards import (
 )
 from labjury.secrets import Secret
 from labjury.rubrics import InMemoryRubricStore, Rubric
-from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
+from labjury.audit import (
+    AuditEvent,
+    ProvenanceRef,
+    ReplayReport,
+    VersionChange,
+    replay_decision,
+    verdict_matches,
+    verify_replay,
+)
 from labjury.policies import RecallBiasedPolicy
 from labjury.reliability import (
     CircuitOpenError,
@@ -127,6 +135,9 @@ __all__ = [
     "InMemoryAuditLog",
     "replay_decision",
     "verdict_matches",
+    "verify_replay",
+    "ReplayReport",
+    "VersionChange",
     # testing helpers
     "assert_taxonomy_store_contract",
     "assert_audit_log_contract",
