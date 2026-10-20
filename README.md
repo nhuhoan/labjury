@@ -298,6 +298,18 @@ with `lj.assert_plugin_conforms(obj, Scorer)` (stage plugins) or the
 
 ---
 
+## Contributing & governance
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — dev setup, the zero-dep-core / TDD / plugin
+  conventions, and how to get a change merged.
+- [docs/versioning.md](docs/versioning.md) — SemVer policy: the public surface is
+  exactly `labjury.__all__`, and how to prove a plugin conforms.
+- [SECURITY.md](./SECURITY.md) — reporting a vulnerability, and an honest statement of
+  what the built-in security mechanisms do and don't cover.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant v2.1.
+
+---
+
 ## License
 
 [Apache-2.0](./LICENSE)
