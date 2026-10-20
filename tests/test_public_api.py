@@ -46,6 +46,7 @@ def test_public_surface_importable():
         "GuardedProposer",
         "HeuristicInjectionGuard",
         "GuardRejected",
+        "Secret",
         "register",
         "load_entry_points",
     ]:
