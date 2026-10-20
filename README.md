@@ -164,6 +164,15 @@ verify it with the shipped conformance suite
 (`labjury.assert_taxonomy_store_contract`). See
 [docs/taxonomy-backends.md](docs/taxonomy-backends.md).
 
+### Audit trail (opt-in, storage-agnostic)
+
+Record an immutable `AuditEvent` per decision and replay it later:
+`lj.Engine(..., audit=lj.InMemoryAuditLog())`. LabJury ships **no database** —
+bring your own store (Kafka/S3/SIEM/SQL) via the append-only `AuditLog` protocol
+and the `AuditEvent.to_dict`/`from_dict` seam, verified with
+`labjury.assert_audit_log_contract`. See
+[docs/audit-trail.md](docs/audit-trail.md).
+
 ---
 
 ## Roadmap

@@ -162,6 +162,15 @@ store nội bộ) bằng cách hiện thực protocol `TaxonomyStore`, rồi ki�
 conformance suite có sẵn (`labjury.assert_taxonomy_store_contract`). Xem
 [docs/taxonomy-backends.md](docs/taxonomy-backends.md).
 
+### Audit trail (tùy chọn, độc lập storage)
+
+Ghi một `AuditEvent` bất biến cho mỗi quyết định và replay lại sau:
+`lj.Engine(..., audit=lj.InMemoryAuditLog())`. LabJury **không kèm database** —
+dùng store riêng (Kafka/S3/SIEM/SQL) qua protocol `AuditLog` append-only và mối
+nối `AuditEvent.to_dict`/`from_dict`, kiểm chứng bằng
+`labjury.assert_audit_log_contract`. Xem
+[docs/audit-trail.md](docs/audit-trail.md).
+
 ---
 
 ## Lộ trình
