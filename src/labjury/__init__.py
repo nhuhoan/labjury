@@ -34,6 +34,7 @@ from labjury.plugins import (
     ProposalContext,
     Proposer,
     Redactor,
+    ReviewQueue,
     RubricStore,
     Scorer,
     Sink,
@@ -53,6 +54,12 @@ from labjury.guards import (
 )
 from labjury.secrets import Secret
 from labjury.rubrics import InMemoryRubricStore, Rubric
+from labjury.review import (
+    InMemoryReviewQueue,
+    ReviewResolution,
+    ReviewTask,
+    review_task_from_event,
+)
 from labjury.audit import (
     AuditEvent,
     ProvenanceRef,
@@ -175,4 +182,10 @@ __all__ = [
     "TenantUsage",
     "PerTenantUsage",
     "FanOutObserver",
+    # human review
+    "ReviewTask",
+    "ReviewResolution",
+    "ReviewQueue",
+    "InMemoryReviewQueue",
+    "review_task_from_event",
 ]

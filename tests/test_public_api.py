@@ -57,6 +57,11 @@ def test_public_surface_importable():
         "TenantUsage",
         "PerTenantUsage",
         "FanOutObserver",
+        "ReviewTask",
+        "ReviewResolution",
+        "ReviewQueue",
+        "InMemoryReviewQueue",
+        "review_task_from_event",
         "register",
         "load_entry_points",
     ]:

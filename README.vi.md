@@ -258,6 +258,17 @@ cost model-agnostic; nhân với đơn giá model của bạn để ra tiền), 
 `lj.FanOutObserver` cho nó chạy song song với observer Prometheus. Xem
 [docs/multi-tenancy.md](docs/multi-tenancy.md).
 
+### Review bởi người (tùy chọn)
+
+Khi policy trả `REVIEW`, cần người quyết định. LabJury sở hữu hợp đồng giao–nhận —
+**stateless, fire-and-forget** — chứ không sở hữu queue hay quy trình.
+`lj.review_task_from_event(event)` đóng gói một quyết định thành `ReviewTask` mang
+đi được; `queue.enqueue(task)` giao cho backend của bạn qua seam một-method
+`lj.ReviewQueue` (`lj.InMemoryReviewQueue` là bản tham chiếu; SQS/DB/Pub-Sub là "tự
+mang"); và `lj.ReviewResolution.to_verdict()` của người là verdict cuối. Engine
+không bị đụng tới — tự wire là việc của deployer. Xem
+[docs/human-review.md](docs/human-review.md).
+
 ---
 
 ## Lộ trình
