@@ -248,3 +248,22 @@ def test_recall_biased_policy_exposes_params():
     from labjury.policies import RecallBiasedPolicy
 
     assert RecallBiasedPolicy().params == {"accept_threshold": 0.85, "clean_threshold": 0.9}
+
+
+async def test_processed_item_records_latency():
+    eng = make_engine()
+    r = await eng.process(Item("i1", {"text": "x"}))
+    assert r.latency_ms is not None and r.latency_ms >= 0.0
+
+
+async def test_failed_item_still_records_latency():
+    eng = make_engine(fail_on_id="i1")
+    r = await eng.process(Item("i1", {"text": "x"}))
+    assert r.status is Status.FAILED and r.latency_ms is not None
+
+
+async def test_pre_admission_retry_later_has_no_latency():
+    eng = make_engine(max_concurrency=1, slow_scorer=True)
+    results = await eng.process_batch([Item(f"i{n}", {"text": "t"}) for n in range(4)])
+    retry = [r for r in results if r.status is Status.RETRY_LATER]
+    assert retry and all(r.latency_ms is None for r in retry)

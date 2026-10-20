@@ -38,3 +38,4 @@ class ItemResult:
     status: Status
     verdict: Verdict | None = None
     error: str | None = None
+    latency_ms: float | None = None
