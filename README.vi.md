@@ -190,6 +190,19 @@ retry kèm backoff, và circuit breaker (`breaker(retry(timeout(call)))`) lên b
 thuộc. Khi bỏ cuộc, lỗi nổi lên thành `ItemResult(FAILED)` để bên gọi đưa lại hàng
 đợi. Xem [docs/reliability.md](docs/reliability.md).
 
+### Che dữ liệu cá nhân (tùy chọn)
+
+Nội dung LabJury phân loại có mang dữ liệu cá nhân, và chỗ rủi ro nhất là khi
+nó rời ra một model bên thứ ba. `labjury.RedactingScorer` / `RedactingProposer`
+bọc bất kỳ plugin remote nào và che *bản copy* State sắp gửi đi — engine giữ
+nguyên bản gốc, nên policy và sink không bị ảnh hưởng. Bạn cắm bộ `Redactor`
+của mình (Presidio, cloud DLP, model nội bộ); kèm sẵn một `RegexRedactor`
+zero-dep làm baseline để chạy ngay (không phải công cụ tuân thủ pháp lý).
+Mặc định fail-closed: redactor lỗi, hoặc gặp modality nó không che được, sẽ
+*chặn* item thay vì để rò. Ghép cùng reliability:
+`lj.ReliableScorer(lj.RedactingScorer(JevScorer(...), lj.RegexRedactor()))`. Xem
+[docs/pii-redaction.md](docs/pii-redaction.md).
+
 ---
 
 ## Lộ trình
