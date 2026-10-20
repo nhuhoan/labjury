@@ -1,4 +1,3 @@
-import importlib
 import os
 
 import pytest
@@ -45,8 +44,19 @@ async def test_namespaces_are_isolated():
 
 
 def test_core_import_does_not_require_redis():
-    # importing the top-level package must never pull in redis or contrib
-    importlib.import_module("labjury")
+    # importing the top-level package must never pull in redis or contrib.
+    # run in a clean subprocess so other test modules that imported contrib
+    # cannot mask the regression via a warm sys.modules.
+    import subprocess
+    import sys
+
+    code = (
+        "import sys, labjury; "
+        "assert 'labjury.contrib' not in sys.modules, 'core imported contrib'; "
+        "assert 'redis' not in sys.modules, 'core imported redis'"
+    )
+    env = {**os.environ, "PYTHONPATH": "src"}
+    subprocess.run([sys.executable, "-c", code], check=True, env=env)
 
 
 @pytest.mark.skipif(
