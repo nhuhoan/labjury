@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+// The LabJury service contract — the single interface every language generates
+// a client from. This file is versioned on its own axis (package labjury.v1),
+// independent of the Python package's labjury.__version__.
+package labjury.v1;
+
+import "google/protobuf/struct.proto";
+
+// A stateless decision service wrapping the LabJury engine. Each RPC runs one
+// (or a batch of) item(s) through the engine and returns the verdict(s); the
+// service holds no state of its own.
+service LabJuryService {
+  rpc Decide(DecideRequest) returns (DecideResponse);
+  rpc DecideBatch(DecideBatchRequest) returns (DecideBatchResponse);
+}
+
+// An input unit. `raw` is the arbitrary JSON-like payload (e.g. {"text": "..."})
+// carried as a Struct so any language can construct it without a bespoke schema.
+// `tenant` is optional (empty string = untagged).
+message Item {
+  string id = 1;
+  google.protobuf.Struct raw = 2;
+  string tenant = 3;
+}
+
+// Proto3 enum value names share file scope, so Status and Action values are
+// globally prefixed to avoid a REVIEW collision.
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_DECIDED = 1;
+  STATUS_REVIEW = 2;
+  STATUS_FAILED = 3;
+  STATUS_RETRY_LATER = 4;
+}
+
+enum Action {
+  ACTION_UNSPECIFIED = 0;
+  ACTION_ACCEPT = 1;
+  ACTION_BLOCK = 2;
+  ACTION_REVIEW = 3;
+}
+
+message Verdict {
+  Action action = 1;
+  repeated string labels = 2;
+  map<string, double> scores = 3;
+  repeated string novel_labels = 4;
+  string reason = 5;
+}
+
+message DecideRequest {
+  Item item = 1;
+}
+
+// One per item. `verdict` is unset when there is none (e.g. a FAILED item);
+// `error` carries the failure message in that case. `latency_ms` and `tenant`
+// mirror the engine's ItemResult.
+message DecideResponse {
+  string correlation_id = 1;
+  Status status = 2;
+  Verdict verdict = 3;
+  string error = 4;
+  double latency_ms = 5;
+  string tenant = 6;
+}
+
+message DecideBatchRequest {
+  repeated Item items = 1;
+}
+
+// Results are unordered per the engine's process_batch contract; each carries
+// its own correlation_id.
+message DecideBatchResponse {
+  repeated DecideResponse results = 1;
+}
