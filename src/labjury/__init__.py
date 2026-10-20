@@ -32,6 +32,12 @@ from labjury.plugins import (
 )
 from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
 from labjury.policies import RecallBiasedPolicy
+from labjury.reliability import (
+    CircuitOpenError,
+    ReliableContextBuilder,
+    ReliableProposer,
+    ReliableScorer,
+)
 from labjury.registry import available, clear, get, load_entry_points, register
 from labjury.results import Action, ItemResult, Status, Verdict
 from labjury.router import NoRouteError, Route, Router
@@ -106,4 +112,9 @@ __all__ = [
     # testing helpers
     "assert_taxonomy_store_contract",
     "assert_audit_log_contract",
+    # remote-plugin reliability
+    "ReliableScorer",
+    "ReliableProposer",
+    "ReliableContextBuilder",
+    "CircuitOpenError",
 ]

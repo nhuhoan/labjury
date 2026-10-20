@@ -181,6 +181,15 @@ labjury[prometheus]`) — counter theo kết cục cộng histogram độ trễ,
 `/metrics` là của bạn. Cắm backend bất kỳ (OpenTelemetry, Datadog) qua cùng
 protocol `Observer`. Xem [docs/observability.md](docs/observability.md).
 
+### Plugin remote đáng tin cậy (tùy chọn)
+
+Mọi plugin remote đều có thể được bọc để tăng độ tin cậy — `labjury.ReliableScorer`,
+`ReliableProposer`, `ReliableContextBuilder` áp dụng timeout theo từng lần gọi,
+retry kèm backoff, và circuit breaker (`breaker(retry(timeout(call)))`) lên bất kỳ
+`Scorer`/`Proposer`/`ContextBuilder` nào — không phụ thuộc model, không thêm phụ
+thuộc. Khi bỏ cuộc, lỗi nổi lên thành `ItemResult(FAILED)` để bên gọi đưa lại hàng
+đợi. Xem [docs/reliability.md](docs/reliability.md).
+
 ---
 
 ## Lộ trình
