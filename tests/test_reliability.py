@@ -2,9 +2,14 @@ import asyncio
 
 import pytest
 
-from labjury.decisions import Answer, ChoiceQuestion
-from labjury.plugins import Scorer
-from labjury.reliability import CircuitOpenError, ReliableScorer
+from labjury.decisions import Answer, Candidate, ChoiceQuestion
+from labjury.plugins import ContextBuilder, Proposer, ProposalContext, Scorer
+from labjury.reliability import (
+    CircuitOpenError,
+    ReliableContextBuilder,
+    ReliableProposer,
+    ReliableScorer,
+)
 
 _Q = [ChoiceQuestion("q", "?", ["x"])]
 _OK = [Answer("q", value="x", confidence=1.0)]
@@ -115,3 +120,49 @@ async def test_breaker_disabled_never_opens():
 def test_reliable_scorer_is_a_scorer():
     rel = ReliableScorer(FlakyScorer(0))
     assert isinstance(rel, Scorer) and rel.accepts == frozenset({"*"})
+
+
+class FlakyProposer:
+    accepts = frozenset({"*"})
+
+    def __init__(self, fail_times):
+        self.calls = 0
+        self._fail = fail_times
+
+    async def propose(self, state, context):
+        self.calls += 1
+        if self.calls <= self._fail:
+            raise RuntimeError("boom")
+        return [Candidate("food", "tag", ChoiceQuestion("q", "?", ["food"]))]
+
+
+class FlakyBuilder:
+    accepts = frozenset({"text"})
+    produces = frozenset({"json"})
+
+    def __init__(self, fail_times):
+        self.calls = 0
+        self._fail = fail_times
+
+    async def build(self, item, state):
+        self.calls += 1
+        if self.calls <= self._fail:
+            raise RuntimeError("boom")
+        return state
+
+
+async def test_reliable_proposer_retries_and_is_a_proposer():
+    inner = FlakyProposer(fail_times=1)
+    rel = ReliableProposer(inner, retries=1, backoff_base_s=0.0, timeout_s=None)
+    out = await rel.propose(None, ProposalContext())
+    assert out and inner.calls == 2
+    assert isinstance(rel, Proposer) and rel.accepts == frozenset({"*"})
+
+
+async def test_reliable_context_builder_delegates_accepts_and_produces():
+    inner = FlakyBuilder(fail_times=1)
+    rel = ReliableContextBuilder(inner, retries=1, backoff_base_s=0.0, timeout_s=None)
+    state = object()
+    assert await rel.build(None, state) is state and inner.calls == 2
+    assert isinstance(rel, ContextBuilder)
+    assert rel.accepts == frozenset({"text"}) and rel.produces == frozenset({"json"})

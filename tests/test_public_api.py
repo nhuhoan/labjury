@@ -32,6 +32,10 @@ def test_public_surface_importable():
         "Router",
         "Proposer",
         "ProposalContext",
+        "ReliableScorer",
+        "ReliableProposer",
+        "ReliableContextBuilder",
+        "CircuitOpenError",
         "register",
         "load_entry_points",
     ]:

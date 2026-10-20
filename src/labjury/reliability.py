@@ -115,3 +115,24 @@ class ReliableScorer:
 
     async def score(self, state, questions):
         return await self._runner.run(lambda: self._inner.score(state, questions))
+
+
+class ReliableProposer:
+    def __init__(self, inner, **kwargs) -> None:
+        self._inner = inner
+        self.accepts = inner.accepts
+        self._runner = _Reliable(**{**_DEFAULTS, **kwargs})
+
+    async def propose(self, state, context):
+        return await self._runner.run(lambda: self._inner.propose(state, context))
+
+
+class ReliableContextBuilder:
+    def __init__(self, inner, **kwargs) -> None:
+        self._inner = inner
+        self.accepts = inner.accepts
+        self.produces = inner.produces
+        self._runner = _Reliable(**{**_DEFAULTS, **kwargs})
+
+    async def build(self, item, state):
+        return await self._runner.run(lambda: self._inner.build(item, state))
