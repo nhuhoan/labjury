@@ -189,7 +189,10 @@ Any remote plugin can be wrapped for reliability — `labjury.ReliableScorer`,
 `ReliableProposer`, `ReliableContextBuilder` apply per-attempt timeout, retry
 with backoff, and a circuit breaker (`breaker(retry(timeout(call)))`) to any
 `Scorer`/`Proposer`/`ContextBuilder`, model-agnostic and zero-dependency. A
-give-up surfaces as an `ItemResult(FAILED)` for the caller to re-enqueue. See
+give-up surfaces as an `ItemResult(FAILED)` for the caller to re-enqueue. To fail
+over across several models, wrap them in `labjury.FailoverScorer` /
+`FailoverProposer` / `FailoverContextBuilder` (tried in order, first success wins;
+each member can itself be a `Reliable*`). See
 [docs/reliability.md](docs/reliability.md).
 
 ### PII redaction (opt-in)
