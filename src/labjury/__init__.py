@@ -30,7 +30,7 @@ from labjury.plugins import (
     Sink,
     TaxonomyStore,
 )
-from labjury.audit import AuditEvent, ProvenanceRef
+from labjury.audit import AuditEvent, ProvenanceRef, replay_decision, verdict_matches
 from labjury.policies import RecallBiasedPolicy
 from labjury.registry import available, clear, get, load_entry_points, register
 from labjury.results import Action, ItemResult, Status, Verdict
@@ -101,6 +101,8 @@ __all__ = [
     "ProvenanceRef",
     "NullAuditLog",
     "InMemoryAuditLog",
+    "replay_decision",
+    "verdict_matches",
     # testing helpers
     "assert_taxonomy_store_contract",
     "assert_audit_log_contract",

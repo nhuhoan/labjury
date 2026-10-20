@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from labjury.audit import (
     AuditEvent,
     ProvenanceRef,
@@ -7,7 +9,10 @@ from labjury.audit import (
     answer_to_dict,
     candidate_from_dict,
     candidate_to_dict,
+    replay_decision,
+    verdict_matches,
 )
+from labjury.policies import RecallBiasedPolicy
 from labjury.decisions import Answer, Candidate, ChoiceQuestion, NoulQuestion
 from labjury.defaults import InMemoryAuditLog, NullAuditLog
 from labjury.plugins import AuditLog
@@ -64,3 +69,34 @@ def test_audit_log_protocol_is_append_only():
 def test_audit_logs_is_a_registry_kind():
     from labjury.registry import _KINDS
     assert "audit_logs" in _KINDS
+
+
+def _decided_event(known):  # a decided event over a 'food' tag candidate
+    c = Candidate("food", "tag", ChoiceQuestion("food_q", "food?", ["food"]))
+    a = Answer("food_q", value="food", confidence=0.95)
+    return AuditEvent(
+        "i1", "fp1", used_proposer=True,
+        candidates=(candidate_to_dict(c),), answers=(answer_to_dict(a),),
+        known_labels=known,
+        verdict={"action": "accept", "labels": ["food"], "scores": {"food": 0.95},
+                 "novel_labels": [], "reason": "accepted"},
+    )
+
+
+async def test_replay_reproduces_recorded_verdict():
+    event = _decided_event(known=frozenset({"food"}))  # food already official
+    verdict = await replay_decision(event, RecallBiasedPolicy())
+    assert verdict_matches(event, verdict)
+
+
+async def test_replay_uses_snapshot_for_novelty():
+    event = _decided_event(known=frozenset())  # empty snapshot -> food is novel
+    verdict = await replay_decision(event, RecallBiasedPolicy())
+    assert "food" in verdict.novel_labels
+
+
+async def test_replay_of_cache_hit_raises():
+    event = AuditEvent("i1", "fp1", from_cache=True, verdict={"action": "accept",
+        "labels": [], "scores": {}, "novel_labels": [], "reason": "cached"})
+    with pytest.raises(ValueError):
+        await replay_decision(event, RecallBiasedPolicy())

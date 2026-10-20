@@ -23,6 +23,8 @@ from labjury.decisions import (
     Question,
     ScoreQuestion,
 )
+from labjury.results import Verdict
+from labjury.state import State
 
 
 def _now_iso() -> str:
@@ -140,3 +142,59 @@ def answer_to_dict(a: Answer) -> dict:
 
 def answer_from_dict(d: dict) -> Answer:
     return Answer(d["key"], d["value"], d["confidence"], d.get("distribution"))
+
+
+# -- deterministic replay ----------------------------------------------------
+
+class _FrozenTaxonomy:
+    """A read-only taxonomy pinned to a recorded snapshot.
+
+    Only the open-world reads matter for replay; writes a policy may attempt
+    (``propose``/``promote`` for novel labels) are no-ops so replay never
+    mutates anything.
+    """
+
+    def __init__(self, known: frozenset[str]) -> None:
+        self._known = known
+
+    async def is_known(self, label: str) -> bool:
+        return label in self._known
+
+    async def propose(self, label: str, meta: dict | None = None) -> None:
+        return None
+
+    async def promote(self, label: str) -> None:
+        return None
+
+    async def known_labels(self) -> set[str]:
+        return set(self._known)
+
+    async def proposed_labels(self) -> set[str]:
+        return set()
+
+
+async def replay_decision(event: AuditEvent, policy) -> Verdict:
+    """Re-run ``policy`` over a recorded event's inputs to reproduce the verdict.
+
+    Faithful for policies that decide from candidates, answers, and the taxonomy
+    snapshot (the default ``RecallBiasedPolicy``). Raises :class:`ValueError` for
+    a cache-hit event — there is no decision to replay; the original decision's
+    event is the replayable one.
+    """
+    if event.from_cache:
+        raise ValueError("cannot replay a cache-hit event; replay the original decision")
+    candidates = [candidate_from_dict(c) for c in event.candidates]
+    answers = [answer_from_dict(a) for a in event.answers]
+    taxonomy = _FrozenTaxonomy(event.known_labels)
+    return await policy.decide(State(), candidates, answers, taxonomy)
+
+
+def verdict_matches(event: AuditEvent, verdict: Verdict) -> bool:
+    """True if ``verdict`` matches the verdict recorded on ``event``."""
+    recorded = event.verdict or {}
+    return (
+        verdict.action.value == recorded.get("action")
+        and verdict.labels == recorded.get("labels")
+        and verdict.novel_labels == recorded.get("novel_labels")
+        and verdict.reason == recorded.get("reason")
+    )
