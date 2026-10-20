@@ -100,3 +100,17 @@ async def test_replay_of_cache_hit_raises():
         "labels": [], "scores": {}, "novel_labels": [], "reason": "cached"})
     with pytest.raises(ValueError):
         await replay_decision(event, RecallBiasedPolicy())
+
+
+def test_candidate_carries_rubric_version_through_audit_seam():
+    c = Candidate("violence", "violation", NoulQuestion("violence", "?"), rubric_version="v2")
+    d = candidate_to_dict(c)
+    assert d["rubric_version"] == "v2"
+    assert candidate_from_dict(d) == c
+
+
+def test_candidate_without_rubric_version_roundtrips():
+    c = Candidate("food", "tag", NoulQuestion("food", "?"))
+    d = candidate_to_dict(c)
+    assert d["rubric_version"] is None
+    assert candidate_from_dict(d).rubric_version is None

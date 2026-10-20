@@ -124,11 +124,21 @@ def question_from_dict(d: dict) -> Question:
 
 
 def candidate_to_dict(c: Candidate) -> dict:
-    return {"label": c.label, "kind": c.kind, "question": question_to_dict(c.question)}
+    return {
+        "label": c.label,
+        "kind": c.kind,
+        "question": question_to_dict(c.question),
+        "rubric_version": c.rubric_version,
+    }
 
 
 def candidate_from_dict(d: dict) -> Candidate:
-    return Candidate(d["label"], d["kind"], question_from_dict(d["question"]))
+    return Candidate(
+        d["label"],
+        d["kind"],
+        question_from_dict(d["question"]),
+        rubric_version=d.get("rubric_version"),
+    )
 
 
 def answer_to_dict(a: Answer) -> dict:
