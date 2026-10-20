@@ -15,6 +15,13 @@ from labjury.plugins import Proposer, Scorer
 from labjury.state import State
 
 
+#: Modalities a scorer can judge directly from the pixels, so a purely visual
+#: item may skip the (expensive, generative) Proposer. Defined positively:
+#: anything *not* in this set (text, metadata, audio, …) needs the semantic
+#: long route. Extend this set to open the fast path to a new visual modality.
+VISUAL_MODALITIES = frozenset({"image", "frame_sequence"})
+
+
 class NoRouteError(Exception):
     """No registered scorer can consume this item's modalities."""
 
@@ -35,7 +42,8 @@ class Router:
         scorer = self._first_matching_scorer(modalities)
         if scorer is None:
             raise NoRouteError(f"no scorer accepts modalities {sorted(modalities)}")
-        needs_semantic = "text" in modalities or "needs_semantic" in state.flags
+        purely_visual = bool(modalities) and modalities <= VISUAL_MODALITIES
+        needs_semantic = not purely_visual or "needs_semantic" in state.flags
         return Route(use_proposer=needs_semantic, scorer=scorer)
 
     def _first_matching_scorer(self, modalities: set[str]) -> Scorer | None:

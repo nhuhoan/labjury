@@ -52,3 +52,19 @@ def test_no_matching_scorer_raises():
     s.add(Content("audio", b"wav"))
     with pytest.raises(NoRouteError):
         Router([], [ImageScorer()]).route(s)
+
+
+def test_metadata_only_item_uses_proposer():
+    # a non-visual item (json/metadata) must take the proposer route, not be
+    # silently fast-pathed just because it has no "text" content
+    s = State()
+    s.add(Content("metadata", {"views": 1000}))
+    route = Router([TextProposer()], [StarScorer()]).route(s)
+    assert route.use_proposer is True
+
+
+def test_frame_sequence_is_visual_fast_path():
+    s = State()
+    s.add(Content("frame_sequence", [b"f1", b"f2"]))
+    route = Router([TextProposer()], [StarScorer()]).route(s)
+    assert route.use_proposer is False
