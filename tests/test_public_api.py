@@ -41,6 +41,11 @@ def test_public_surface_importable():
         "RedactingProposer",
         "RegexRedactor",
         "UnredactedModalityError",
+        "Guard",
+        "GuardedScorer",
+        "GuardedProposer",
+        "HeuristicInjectionGuard",
+        "GuardRejected",
         "register",
         "load_entry_points",
     ]:
