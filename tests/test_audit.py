@@ -114,3 +114,29 @@ def test_candidate_without_rubric_version_roundtrips():
     d = candidate_to_dict(c)
     assert d["rubric_version"] is None
     assert candidate_from_dict(d).rubric_version is None
+
+
+def test_verdict_to_dict_shape():
+    from labjury.audit import verdict_to_dict
+    from labjury.results import Action, Verdict
+    v = Verdict(Action.ACCEPT, ["a"], {"a": 0.9}, [], "ok")
+    assert verdict_to_dict(v) == {
+        "action": "accept", "labels": ["a"], "scores": {"a": 0.9},
+        "novel_labels": [], "reason": "ok",
+    }
+
+
+def test_provenance_of_reads_name_version_params():
+    from labjury.audit import provenance_of
+    class P:
+        version = "1.2"
+        params = {"k": 1}
+    ref = provenance_of(P())
+    assert (ref.name, ref.version, ref.params) == ("P", "1.2", {"k": 1})
+
+
+def test_provenance_of_defaults_when_missing():
+    from labjury.audit import provenance_of
+    class Bare: ...
+    ref = provenance_of(Bare())
+    assert (ref.name, ref.version, ref.params) == ("Bare", None, None)

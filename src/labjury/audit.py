@@ -141,6 +141,26 @@ def candidate_from_dict(d: dict) -> Candidate:
     )
 
 
+def verdict_to_dict(v: Verdict) -> dict:
+    return {
+        "action": v.action.value,
+        "labels": v.labels,
+        "scores": v.scores,
+        "novel_labels": v.novel_labels,
+        "reason": v.reason,
+    }
+
+
+def provenance_of(plugin: object) -> ProvenanceRef:
+    """The provenance of a plugin instance: its class name and, if declared, its
+    ``version`` and ``params`` (how it was configured)."""
+    return ProvenanceRef(
+        type(plugin).__name__,
+        getattr(plugin, "version", None),
+        getattr(plugin, "params", None),
+    )
+
+
 def answer_to_dict(a: Answer) -> dict:
     return {
         "key": a.key,

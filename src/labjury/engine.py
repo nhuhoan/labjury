@@ -22,9 +22,10 @@ from typing import Callable
 
 from labjury.audit import (
     AuditEvent,
-    ProvenanceRef,
     answer_to_dict,
     candidate_to_dict,
+    provenance_of,
+    verdict_to_dict,
 )
 from labjury.decisions import Candidate
 from labjury.defaults import NullAuditLog
@@ -40,27 +41,9 @@ from labjury.plugins import (
     TaxonomyStore,
 )
 from labjury.observability import Observer
-from labjury.results import Action, ItemResult, Status, Verdict
+from labjury.results import Action, ItemResult, Status
 from labjury.router import Router
 from labjury.state import Item, State
-
-
-def _provenance_of(plugin: object) -> ProvenanceRef:
-    return ProvenanceRef(
-        type(plugin).__name__,
-        getattr(plugin, "version", None),
-        getattr(plugin, "params", None),
-    )
-
-
-def _verdict_to_dict(v: Verdict) -> dict:
-    return {
-        "action": v.action.value,
-        "labels": v.labels,
-        "scores": v.scores,
-        "novel_labels": v.novel_labels,
-        "reason": v.reason,
-    }
 
 
 class Engine:
@@ -137,7 +120,7 @@ class Engine:
         if cached is not None:
             await self._record_safe(
                 AuditEvent(
-                    item.id, key, from_cache=True, verdict=_verdict_to_dict(cached)
+                    item.id, key, from_cache=True, verdict=verdict_to_dict(cached)
                 )
             )
             return ItemResult(item.id, self._status_for(cached.action), verdict=cached)
@@ -175,10 +158,10 @@ class Engine:
                 answers=tuple(answer_to_dict(a) for a in answers),
                 known_labels=known,
                 provenance={
-                    "scorer": _provenance_of(route.scorer),
-                    "policy": _provenance_of(self._policy),
+                    "scorer": provenance_of(route.scorer),
+                    "policy": provenance_of(self._policy),
                 },
-                verdict=_verdict_to_dict(verdict),
+                verdict=verdict_to_dict(verdict),
             )
         )
         return ItemResult(item.id, self._status_for(verdict.action), verdict=verdict)
