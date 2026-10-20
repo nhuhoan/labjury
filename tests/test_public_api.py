@@ -25,6 +25,7 @@ _MUST_REMAIN_PUBLIC = {
     "ContextBuilder", "Proposer", "Scorer", "DecisionPolicy", "Sink", "Cache",
     "Observer", "TaxonomyStore", "AuditLog",
     "register", "get", "available", "load_entry_points",
+    "assert_plugin_conforms",
     "__version__",
 }
 

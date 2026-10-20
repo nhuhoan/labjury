@@ -102,6 +102,7 @@ from labjury.state import (
 from labjury.taxonomy import InMemoryTaxonomyStore
 from labjury.testing import (
     assert_audit_log_contract,
+    assert_plugin_conforms,
     assert_rubric_store_contract,
     assert_taxonomy_store_contract,
 )
@@ -169,6 +170,7 @@ __all__ = [
     # testing helpers
     "assert_taxonomy_store_contract",
     "assert_audit_log_contract",
+    "assert_plugin_conforms",
     # remote-plugin reliability
     "ReliableScorer",
     "ReliableProposer",
