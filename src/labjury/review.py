@@ -101,6 +101,25 @@ class ReviewResolution:
         )
 
 
+class InMemoryReviewQueue:
+    """Reference :class:`~labjury.plugins.ReviewQueue`; holds enqueued tasks in a
+    list. ``pending`` inspects, ``drain`` pulls-and-clears (both return copies)."""
+
+    def __init__(self) -> None:
+        self._tasks: list[ReviewTask] = []
+
+    async def enqueue(self, task: ReviewTask) -> None:
+        self._tasks.append(task)
+
+    def pending(self) -> list[ReviewTask]:
+        return list(self._tasks)
+
+    def drain(self) -> list[ReviewTask]:
+        tasks = list(self._tasks)
+        self._tasks.clear()
+        return tasks
+
+
 def review_task_from_event(event: AuditEvent) -> ReviewTask:
     """Build a :class:`ReviewTask` from a recorded decision — the audit event
     already carries the candidates, answers, tentative verdict, and tenant."""

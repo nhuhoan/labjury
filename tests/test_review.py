@@ -1,8 +1,14 @@
 import pytest
 
 from labjury.audit import AuditEvent
+from labjury.plugins import ReviewQueue
 from labjury.results import Action
-from labjury.review import ReviewResolution, ReviewTask, review_task_from_event
+from labjury.review import (
+    InMemoryReviewQueue,
+    ReviewResolution,
+    ReviewTask,
+    review_task_from_event,
+)
 
 
 def test_review_task_from_event():
@@ -52,3 +58,24 @@ def test_resolution_to_verdict():
 def test_resolution_unknown_action_raises():
     with pytest.raises(ValueError):
         ReviewResolution("c1", "frobnicate", [], "alice").to_verdict()
+
+
+async def test_enqueue_and_drain():
+    q = InMemoryReviewQueue()
+    assert await q.enqueue(ReviewTask("c1")) is None
+    await q.enqueue(ReviewTask("c2"))
+    assert [t.correlation_id for t in q.pending()] == ["c1", "c2"]
+    drained = q.drain()
+    assert [t.correlation_id for t in drained] == ["c1", "c2"]
+    assert q.pending() == []
+
+
+async def test_pending_is_a_copy():
+    q = InMemoryReviewQueue()
+    await q.enqueue(ReviewTask("c1"))
+    q.pending().clear()
+    assert len(q.pending()) == 1
+
+
+def test_in_memory_queue_is_a_review_queue():
+    assert isinstance(InMemoryReviewQueue(), ReviewQueue)

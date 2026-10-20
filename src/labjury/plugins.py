@@ -17,6 +17,7 @@ from labjury.results import ItemResult, Verdict
 from labjury.state import Item, State
 
 if TYPE_CHECKING:
+    from labjury.review import ReviewTask
     from labjury.rubrics import Rubric
 
 
@@ -113,6 +114,15 @@ class RubricStore(Protocol):
     async def get(self, label: str, version: str) -> "Rubric | None": ...
 
     async def history(self, label: str) -> list[str]: ...
+
+
+@runtime_checkable
+class ReviewQueue(Protocol):
+    """Fire-and-forget hand-off of a flagged decision to a human-review backend.
+    ``enqueue`` hands the task off and returns; LabJury never pulls, acks, or waits
+    — the queue and the review workflow are the deployer's."""
+
+    async def enqueue(self, task: "ReviewTask") -> None: ...
 
 
 @runtime_checkable
