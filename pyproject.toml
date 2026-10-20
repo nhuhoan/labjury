@@ -15,6 +15,7 @@ dependencies = []
 [project.optional-dependencies]
 test = ["pytest>=8", "pytest-asyncio>=0.23"]
 redis = ["redis>=5"]
+prometheus = ["prometheus_client>=0.19"]
 
 [project.urls]
 Homepage = "https://github.com/nhuhoan/labjury"

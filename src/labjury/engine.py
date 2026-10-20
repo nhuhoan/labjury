@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import time
 from typing import Callable
 
 from labjury.audit import (
@@ -96,10 +97,12 @@ class Engine:
     # -- public API ---------------------------------------------------------
 
     async def process(self, item: Item) -> ItemResult:
+        start = time.perf_counter()
         try:
             result = await self._run(item)
         except Exception as exc:  # partial-failure: never let one item escape
             result = ItemResult(item.id, Status.FAILED, error=str(exc))
+        result.latency_ms = (time.perf_counter() - start) * 1000.0
         await self._finish(result)
         return result
 
