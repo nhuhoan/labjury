@@ -51,6 +51,9 @@ def test_public_surface_importable():
         "RubricStore",
         "InMemoryRubricStore",
         "assert_rubric_store_contract",
+        "verify_replay",
+        "ReplayReport",
+        "VersionChange",
         "register",
         "load_entry_points",
     ]:

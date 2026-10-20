@@ -240,6 +240,16 @@ past decision used. `InMemoryRubricStore` is the zero-dep reference; durable
 backends are bring-your-own, provable with `labjury.assert_rubric_store_contract`.
 See [docs/rubric-registry.md](docs/rubric-registry.md).
 
+### Reproducibility & replay (opt-in)
+
+The audit trail pins every input to a decision (candidates + `rubric_version`,
+answers, taxonomy snapshot, scorer/policy provenance).
+`await lj.verify_replay(event, policy)` turns that into a one-line audit: it
+re-runs the policy over the recorded inputs and returns a `ReplayReport` whose
+`.faithful` is `True` only when the verdict reproduces **and** the policy version
+hasn't drifted since. Only the policy stage is replayed — the scorer is pinned by
+the recorded answers. See [docs/reproducibility.md](docs/reproducibility.md).
+
 ---
 
 ## Roadmap

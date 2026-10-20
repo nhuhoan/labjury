@@ -238,6 +238,16 @@ là bản tham chiếu zero-dep; backend bền vững là "tự mang", kiểm ch
 `labjury.assert_rubric_store_contract`. Xem
 [docs/rubric-registry.md](docs/rubric-registry.md).
 
+### Tái lập & replay (tùy chọn)
+
+Audit trail đã ghim mọi input của một quyết định (candidates + `rubric_version`,
+answers, snapshot taxonomy, provenance scorer/policy).
+`await lj.verify_replay(event, policy)` biến dữ liệu đó thành một lần kiểm toán
+một dòng: chạy lại policy trên input đã ghi và trả về `ReplayReport` với
+`.faithful` chỉ `True` khi verdict tái lập đúng **và** version policy chưa drift.
+Chỉ stage policy được chạy lại — scorer đã bị ghim bởi answers đã lưu. Xem
+[docs/reproducibility.md](docs/reproducibility.md).
+
 ---
 
 ## Lộ trình
