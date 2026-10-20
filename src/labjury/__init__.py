@@ -4,6 +4,8 @@ Proposers plead, a scorer judges, a verdict is rendered. Runs without Jev via
 the built-in :class:`LLMJudgeScorer` fallback.
 """
 
+__version__ = "0.0.1"
+
 from labjury.decisions import (
     Answer,
     Candidate,
@@ -27,6 +29,7 @@ from labjury.observability import (
     TenantUsage,
 )
 from labjury.plugins import (
+    AuditLog,
     Cache,
     ContextBuilder,
     DecisionPolicy,
@@ -104,6 +107,8 @@ from labjury.testing import (
 )
 
 __all__ = [
+    # meta
+    "__version__",
     # state
     "Content",
     "Item",
@@ -130,6 +135,7 @@ __all__ = [
     "DecisionPolicy",
     "Sink",
     "TaxonomyStore",
+    "AuditLog",
     "Cache",
     "Observer",
     # registry
