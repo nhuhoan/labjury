@@ -164,6 +164,11 @@ verify it with the shipped conformance suite
 (`labjury.assert_taxonomy_store_contract`). See
 [docs/taxonomy-backends.md](docs/taxonomy-backends.md).
 
+For a durable **decision cache** (so identical items aren't re-judged across
+restarts or workers), the same story applies: `labjury.InMemoryCache` is the
+zero-dep default, and `labjury.contrib.redis_cache.RedisCache` is a built-in
+Redis reference backend. See [docs/cache-backends.md](docs/cache-backends.md).
+
 ### Audit trail (opt-in, storage-agnostic)
 
 Record an immutable `AuditEvent` per decision and replay it later:

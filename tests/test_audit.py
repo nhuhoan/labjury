@@ -213,3 +213,11 @@ def test_audit_event_tenant_defaults_none():
     d = AuditEvent("c1", "fp").to_dict()
     d.pop("tenant", None)
     assert AuditEvent.from_dict(d).tenant is None
+
+
+def test_verdict_roundtrip():
+    from labjury.audit import verdict_from_dict, verdict_to_dict
+    from labjury.results import Action, Verdict
+
+    v = Verdict(Action.BLOCK, ["nsfw"], {"nsfw": 0.9}, ["novel"], "bad")
+    assert verdict_from_dict(verdict_to_dict(v)) == v

@@ -162,6 +162,12 @@ store nội bộ) bằng cách hiện thực protocol `TaxonomyStore`, rồi ki�
 conformance suite có sẵn (`labjury.assert_taxonomy_store_contract`). Xem
 [docs/taxonomy-backends.md](docs/taxonomy-backends.md).
 
+Với **cache quyết định** bền vững (để các item giống hệt nhau không bị chấm lại
+qua mỗi lần khởi động lại hay giữa các worker), câu chuyện cũng vậy:
+`labjury.InMemoryCache` là mặc định zero-dep, còn
+`labjury.contrib.redis_cache.RedisCache` là backend tham chiếu Redis có sẵn. Xem
+[docs/cache-backends.md](docs/cache-backends.md).
+
 ### Audit trail (tùy chọn, độc lập storage)
 
 Ghi một `AuditEvent` bất biến cho mỗi quyết định và replay lại sau:
