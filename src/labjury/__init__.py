@@ -58,12 +58,15 @@ from labjury.guards import (
 from labjury.secrets import Secret
 from labjury.rubrics import InMemoryRubricStore, Rubric
 from labjury.evaluation import (
+    ActionReport,
     EvalComparison,
     EvalReport,
     GoldenCase,
     LabelScore,
     compare_evals,
+    run_action_evaluation,
     run_evaluation,
+    score_actions,
     score_predictions,
 )
 from labjury.review import (
@@ -225,4 +228,7 @@ __all__ = [
     "run_evaluation",
     "EvalComparison",
     "compare_evals",
+    "ActionReport",
+    "score_actions",
+    "run_action_evaluation",
 ]

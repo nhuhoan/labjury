@@ -289,7 +289,9 @@ Pipeline có chính xác không, và một thay đổi làm nó tệ đi không?
 của bạn — tự mang dữ liệu) và trả về `EvalReport` gồm precision/recall/F1 per-label
 và micro/macro cộng exact-match rate. `lj.compare_evals(baseline, candidate)` so hai
 lần chạy để bắt policy regression — chặn CI bằng `assert not
-cmp.regressed(tolerance=…)`. Thuần, deterministic, zero-dep. Xem
+cmp.regressed(tolerance=…)`. Action được ship (accept/block/review) cũng chấm được
+— `lj.run_action_evaluation` / `lj.score_actions` trả về `ActionReport` (ma trận
+nhầm lẫn + accuracy). Thuần, deterministic, zero-dep. Xem
 [docs/evaluation.md](docs/evaluation.md).
 
 ### Phiên bản & kiểm chuẩn plugin

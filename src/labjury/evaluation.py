@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from labjury.results import Action
 from labjury.state import Item
 
 
@@ -120,11 +121,60 @@ def score_predictions(
 
 
 @dataclass(frozen=True)
+class ActionReport:
+    """Action-level metrics: the shipped decision (ACCEPT/BLOCK/REVIEW) scored as a
+    3-class problem. ``confusion`` is keyed by ``(expected_action, predicted_action)``
+    action-value strings (predicted ``"none"`` = the pipeline produced no action);
+    ``per_action`` is one-vs-rest per real action, reusing :class:`LabelScore`."""
+
+    n_cases: int
+    confusion: dict[tuple[str, str], int]
+    per_action: dict[str, LabelScore]
+
+    @property
+    def accuracy(self) -> float:
+        correct = sum(n for (e, p), n in self.confusion.items() if e == p)
+        return _ratio(correct, self.n_cases)
+
+
+def score_actions(
+    pairs: Iterable[tuple[Action, Action | None]],
+) -> ActionReport:
+    """Score ``(expected_action, predicted_action)`` pairs into an :class:`ActionReport`.
+
+    ``predicted is None`` means the pipeline produced no action (a ``FAILED`` item);
+    it is bucketed under the predicted key ``"none"``, counts as a false negative for
+    the expected action, and is never a true positive. ``per_action`` metrics are
+    one-vs-rest over the real action classes that appear as an expected value."""
+    confusion: dict[tuple[str, str], int] = {}
+    n_cases = 0
+    for expected, predicted in pairs:
+        n_cases += 1
+        key = (expected.value, predicted.value if predicted is not None else "none")
+        confusion[key] = confusion.get(key, 0) + 1
+    # one-vs-rest over every real action seen as expected OR predicted; "none"
+    # is the no-action failure bucket, not a class, so it earns no row.
+    real_actions = {a for key in confusion for a in key} - {"none"}
+    per_action = {
+        a: LabelScore(
+            a,
+            confusion.get((a, a), 0),
+            sum(n for (e, p), n in confusion.items() if p == a and e != a),
+            sum(n for (e, p), n in confusion.items() if e == a and p != a),
+        )
+        for a in real_actions
+    }
+    return ActionReport(n_cases, confusion, per_action)
+
+
+@dataclass(frozen=True)
 class GoldenCase:
-    """A ground-truth example: an item and the labels a correct pipeline should emit."""
+    """A ground-truth example: an item, the labels a correct pipeline should emit,
+    and optionally the action it should ship (for :func:`run_action_evaluation`)."""
 
     item: Item
     expected_labels: frozenset[str]
+    expected_action: Action | None = None
 
 
 async def run_evaluation(engine, cases: Iterable[GoldenCase]) -> EvalReport:
@@ -138,6 +188,25 @@ async def run_evaluation(engine, cases: Iterable[GoldenCase]) -> EvalReport:
         predicted = set(result.verdict.labels) if result.verdict else set()
         pairs.append((set(case.expected_labels), predicted))
     return score_predictions(pairs)
+
+
+async def run_action_evaluation(engine, cases: Iterable[GoldenCase]) -> ActionReport:
+    """Run a golden set through ``engine`` and score the verdict *action*.
+
+    Each case must carry an ``expected_action`` (raises :class:`ValueError`
+    otherwise). A result with no verdict (e.g. a ``FAILED`` item) predicts no
+    action (``None`` → the ``"none"`` bucket), counting against the expected
+    action."""
+    pairs: list[tuple[Action, Action | None]] = []
+    for case in cases:
+        if case.expected_action is None:
+            raise ValueError(
+                "GoldenCase.expected_action is required for action evaluation"
+            )
+        result = await engine.process(case.item)
+        predicted = result.verdict.action if result.verdict else None
+        pairs.append((case.expected_action, predicted))
+    return score_actions(pairs)
 
 
 @dataclass(frozen=True)

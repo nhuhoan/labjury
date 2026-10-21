@@ -75,12 +75,45 @@ assert not cmp.regressed(tolerance=0.01), f"regression: {cmp.regressed_labels}"
 `tolerance`. LabJury returns the numbers; the gate (how much drop you tolerate, where
 you assert) is yours.
 
+## Action-level evaluation
+
+Labels are one view; the decision that actually *ships* is the **action** —
+`ACCEPT` / `BLOCK` / `REVIEW`. A pipeline can get labels right yet route the wrong
+action (e.g. the policy sends too much to `REVIEW`). Score the action directly:
+
+```python
+from labjury.results import Action
+
+golden = [lj.GoldenCase(item, frozenset({"nsfw"}), expected_action=Action.BLOCK), ...]
+report = await lj.run_action_evaluation(engine, golden)
+
+report.accuracy                       # fraction routed to the right action
+report.confusion[("block", "review")] # how many BLOCKs were sent to REVIEW instead
+report.per_action["block"].recall     # of the things that should BLOCK, how many did
+```
+
+`run_action_evaluation` requires every case to carry an `expected_action` (it raises
+otherwise). `ActionReport` holds:
+
+- `confusion` — a matrix keyed by `(expected_action, predicted_action)` value
+  strings. A `FAILED` item (no verdict) predicts the bucket `"none"`, so a pipeline
+  that fails to decide is never scored correct.
+- `accuracy` — the diagonal over all cases.
+- `per_action` — one-vs-rest `LabelScore` per real action (`precision`/`recall`/`f1`),
+  the same math as the label metrics.
+
+The pure core is `lj.score_actions(pairs)` over `(expected, predicted)` `Action`
+pairs (predicted `None` = no action) if you already have predictions. The confusion
+is reported raw — **cost-weighting** it (a missed `BLOCK` usually costs more than a
+spurious `REVIEW`) is your policy over these counts. This is additive to the label
+path; `run_evaluation` and `score_predictions` are unchanged.
+
 ## Non-goals
 
 - **No built-in golden datasets.** Bring your own labeled data and storage.
 - **No CI integration.** `compare_evals` / `regressed` return values; you assert on
   them in your pipeline.
 - **Pipeline-level, not component-level.** The harness scores the end-to-end verdict
-  labels, not a scorer or proposer in isolation.
-- **Label-set metrics.** Action-level (accept/block/review) confusion is an
-  extension you build on `run_evaluation`'s per-case results.
+  labels and action, not a scorer or proposer in isolation.
+- **No cost-weighting of the action confusion.** `ActionReport` reports raw counts;
+  what a misroute costs is your policy.

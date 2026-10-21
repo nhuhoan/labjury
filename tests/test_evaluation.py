@@ -108,3 +108,94 @@ async def test_failed_result_is_empty_prediction():
     report = await run_evaluation(engine, [GoldenCase(Item("i1", {}), frozenset({"spam"}))])
     assert report.per_label["spam"].fn == 1
     assert report.per_label["spam"].recall == 0.0
+
+
+# -- action-level evaluation ---------------------------------------------------
+
+
+def test_all_correct():
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    r = score_actions([(Action.BLOCK, Action.BLOCK), (Action.ACCEPT, Action.ACCEPT)])
+    assert r.accuracy == 1.0
+    assert r.per_action["block"].f1 == 1.0
+    assert r.per_action["accept"].f1 == 1.0
+
+
+def test_misroute():
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    # expected BLOCK but predicted REVIEW
+    r = score_actions([(Action.BLOCK, Action.REVIEW)])
+    assert r.confusion[("block", "review")] == 1
+    assert r.accuracy == 0.0
+    assert r.per_action["block"].recall == 0.0  # the BLOCK was missed
+    assert r.per_action["block"].fn == 1
+
+
+def test_none_predicted_is_failure():
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    r = score_actions([(Action.BLOCK, None)])
+    assert r.confusion[("block", "none")] == 1
+    assert r.per_action["block"].fn == 1
+    assert r.per_action["block"].tp == 0
+    assert "none" not in r.per_action  # "none" is not a real class
+
+
+def test_empty():
+    from labjury.evaluation import score_actions
+
+    r = score_actions([])
+    assert r.accuracy == 0.0 and r.per_action == {}
+
+
+async def test_run_action_eval():
+    from labjury.evaluation import GoldenCase, run_action_evaluation
+    from labjury.results import Action, ItemResult, Status, Verdict
+    from labjury.state import Item
+
+    class _Engine:
+        async def process(self, item):
+            if item.id == "fail":
+                return ItemResult("fail", Status.FAILED)
+            v = Verdict(Action.BLOCK, ["nsfw"], {}, [], "r")
+            return ItemResult(item.id, Status.DECIDED, v)
+
+    cases = [
+        GoldenCase(Item("ok", {}), frozenset(), expected_action=Action.BLOCK),
+        GoldenCase(Item("fail", {}), frozenset(), expected_action=Action.BLOCK),
+    ]
+    r = await run_action_evaluation(_Engine(), cases)
+    assert r.confusion[("block", "block")] == 1
+    assert r.confusion[("block", "none")] == 1  # FAILED -> no action
+    assert r.per_action["block"].tp == 1 and r.per_action["block"].fn == 1
+
+
+async def test_missing_expected_action_raises():
+    import pytest
+
+    from labjury.evaluation import GoldenCase, run_action_evaluation
+    from labjury.state import Item
+
+    class _Engine:
+        async def process(self, item):
+            raise AssertionError("should raise before processing")
+
+    with pytest.raises(ValueError):
+        await run_action_evaluation(_Engine(), [GoldenCase(Item("i", {}), frozenset())])
+
+
+def test_misroute_predicted_action_precision_drops():
+    # The spec's Review Focus: in a misroute the *predicted* action's precision
+    # drops too, so the predicted-only action must get a per_action row.
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    r = score_actions([(Action.BLOCK, Action.REVIEW)])
+    assert r.per_action["review"].fp == 1
+    assert r.per_action["review"].precision == 0.0
+    assert "none" not in r.per_action  # the failure bucket is still not a class
