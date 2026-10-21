@@ -295,3 +295,61 @@ async def verify_replay(event: AuditEvent, policy) -> ReplayReport:
             f"{current.name}@{current.version}",
         )
     return ReplayReport(matches, drift, event.verdict, verdict_to_dict(replayed))
+
+
+@dataclass(frozen=True)
+class RubricDrift:
+    """One recorded candidate whose rubric no longer matches the registry.
+
+    ``registry_question`` is ``None`` when the version is absent from the
+    registry; otherwise it is the registry's serialized question, against which
+    ``recorded_question`` differed.
+    """
+
+    label: str
+    version: str
+    reason: str
+    recorded_question: dict
+    registry_question: dict | None
+
+
+async def rubric_drift(event: AuditEvent, store) -> list[RubricDrift]:
+    """Compare each recorded candidate's rubric against what ``store`` holds.
+
+    For every candidate carrying a ``rubric_version``, fetch
+    ``await store.get(label, version)`` and compare the recorded question to the
+    registry's. A published ``(label, version)`` is immutable by contract, so any
+    mismatch is a real signal: the version is **absent from the registry**, or
+    its **question differs**. Candidates without a ``rubric_version`` are skipped
+    (they were not sourced from a registry), and a cache-hit / no-candidate event
+    yields ``[]``. Detection only — what to do about drift is the deployer's.
+    """
+    drifts: list[RubricDrift] = []
+    for cand in event.candidates:
+        version = cand.get("rubric_version")
+        if version is None:
+            continue
+        stored = await store.get(cand["label"], version)
+        if stored is None:
+            drifts.append(
+                RubricDrift(
+                    cand["label"],
+                    version,
+                    "version absent from registry",
+                    cand["question"],
+                    None,
+                )
+            )
+            continue
+        registry_question = question_to_dict(stored.question)
+        if registry_question != cand["question"]:
+            drifts.append(
+                RubricDrift(
+                    cand["label"],
+                    version,
+                    "question differs from registry",
+                    cand["question"],
+                    registry_question,
+                )
+            )
+    return drifts
