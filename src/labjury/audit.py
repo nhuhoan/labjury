@@ -11,6 +11,8 @@ decision policy over a recorded event's inputs to reproduce the verdict.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -62,6 +64,7 @@ class AuditEvent:
     provenance: dict[str, ProvenanceRef] = field(default_factory=dict)
     verdict: dict | None = None
     tenant: str | None = None
+    state_fingerprint: str | None = None
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     occurred_at: str = field(default_factory=_now_iso)
 
@@ -80,6 +83,7 @@ class AuditEvent:
             "provenance": {k: v.to_dict() for k, v in self.provenance.items()},
             "verdict": self.verdict,
             "tenant": self.tenant,
+            "state_fingerprint": self.state_fingerprint,
         }
 
     @classmethod
@@ -98,6 +102,7 @@ class AuditEvent:
             },
             verdict=d.get("verdict"),
             tenant=d.get("tenant"),
+            state_fingerprint=d.get("state_fingerprint"),
             event_id=d["event_id"],
             occurred_at=d["occurred_at"],
         )
@@ -189,6 +194,21 @@ def answer_from_dict(d: dict) -> Answer:
     return Answer(d["key"], d["value"], d["confidence"], d.get("distribution"))
 
 
+def state_fingerprint(state: State) -> str:
+    """Hash policy-visible state without placing its contents in the audit log."""
+    content = [
+        {"modality": modality, "payload": piece.payload, "meta": piece.meta}
+        for modality in sorted(state.modalities())
+        for piece in state.get(modality)
+    ]
+    blob = json.dumps(
+        {"content": content, "flags": sorted(state.flags)},
+        sort_keys=True,
+        default=str,
+    ).encode()
+    return hashlib.sha256(blob).hexdigest()
+
+
 # -- deterministic replay ----------------------------------------------------
 
 class _FrozenTaxonomy:
@@ -218,20 +238,26 @@ class _FrozenTaxonomy:
         return set()
 
 
-async def replay_decision(event: AuditEvent, policy) -> Verdict:
+async def replay_decision(event: AuditEvent, policy, *, state: State) -> Verdict:
     """Re-run ``policy`` over a recorded event's inputs to reproduce the verdict.
 
-    Faithful for policies that decide from candidates, answers, and the taxonomy
-    snapshot (the default ``RecallBiasedPolicy``). Raises :class:`ValueError` for
-    a cache-hit event — there is no decision to replay; the original decision's
-    event is the replayable one.
+    The caller supplies the original State because audit records do not store raw
+    content. For new records its fingerprint is checked before calling the policy.
+    Cache-hit events have no decision to replay.
     """
     if event.from_cache:
         raise ValueError("cannot replay a cache-hit event; replay the original decision")
+    if not isinstance(state, State):
+        raise TypeError("replay requires the original State")
+    if (
+        event.state_fingerprint is not None
+        and state_fingerprint(state) != event.state_fingerprint
+    ):
+        raise ValueError("state does not match the audited decision")
     candidates = [candidate_from_dict(c) for c in event.candidates]
     answers = [answer_from_dict(a) for a in event.answers]
     taxonomy = _FrozenTaxonomy(event.known_labels)
-    return await policy.decide(State(), candidates, answers, taxonomy)
+    return await policy.decide(state, candidates, answers, taxonomy)
 
 
 def verdict_matches(event: AuditEvent, verdict: Verdict) -> bool:
@@ -240,6 +266,7 @@ def verdict_matches(event: AuditEvent, verdict: Verdict) -> bool:
     return (
         verdict.action.value == recorded.get("action")
         and verdict.labels == recorded.get("labels")
+        and verdict.scores == recorded.get("scores")
         and verdict.novel_labels == recorded.get("novel_labels")
         and verdict.reason == recorded.get("reason")
     )
@@ -271,7 +298,7 @@ class ReplayReport:
         return self.verdict_matches and not self.drift
 
 
-async def verify_replay(event: AuditEvent, policy) -> ReplayReport:
+async def verify_replay(event: AuditEvent, policy, *, state: State) -> ReplayReport:
     """Replay ``event`` through ``policy`` and verify the reproduction.
 
     Re-runs the policy over the event's recorded inputs (raising
@@ -282,7 +309,7 @@ async def verify_replay(event: AuditEvent, policy) -> ReplayReport:
     answers. Drift compares ``(name, version)``; ``params`` is configuration, not
     a version handle, so it is not part of the drift signal.
     """
-    replayed = await replay_decision(event, policy)
+    replayed = await replay_decision(event, policy, state=state)
     matches = verdict_matches(event, replayed)
     drift: dict[str, VersionChange] = {}
     recorded = event.provenance.get("policy")

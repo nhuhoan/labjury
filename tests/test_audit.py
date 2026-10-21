@@ -10,6 +10,7 @@ from labjury.audit import (
     candidate_from_dict,
     candidate_to_dict,
     replay_decision,
+    state_fingerprint,
     verdict_matches,
 )
 from labjury.policies import RecallBiasedPolicy
@@ -17,6 +18,7 @@ from labjury.decisions import Answer, Candidate, ChoiceQuestion, NoulQuestion
 from labjury.defaults import InMemoryAuditLog, NullAuditLog
 from labjury.plugins import AuditLog
 from labjury.results import Action, Verdict
+from labjury.state import Content, State
 from labjury.testing import assert_audit_log_contract
 
 
@@ -42,12 +44,23 @@ def test_full_event_round_trips_through_dict_and_json():
         candidates=(candidate_to_dict(c),),
         answers=(answer_to_dict(a),),
         known_labels=frozenset({"food"}),
+        state_fingerprint="state-fp",
         provenance={"policy": ProvenanceRef("RecallBiasedPolicy", None, {"accept": 0.85})},
         verdict={"action": "accept", "labels": ["food"], "scores": {"food": 0.95},
                  "novel_labels": [], "reason": "accepted"},
     )
     assert AuditEvent.from_dict(e.to_dict()) == e
     assert AuditEvent.from_dict(json.loads(json.dumps(e.to_dict()))) == e
+
+
+def test_verdict_match_includes_scores():
+    event = AuditEvent("i1", "fp", verdict={
+        "action": "accept", "labels": ["food"], "scores": {"food": 0.9},
+        "novel_labels": [], "reason": "accepted",
+    })
+    assert not verdict_matches(
+        event, Verdict(Action.ACCEPT, ["food"], {"food": 0.8}, [], "accepted")
+    )
 
 
 def test_cache_hit_event_round_trips():
@@ -98,13 +111,13 @@ def _decided_event(known):  # a decided event over a 'food' tag candidate
 
 async def test_replay_reproduces_recorded_verdict():
     event = _decided_event(known=frozenset({"food"}))  # food already official
-    verdict = await replay_decision(event, RecallBiasedPolicy())
+    verdict = await replay_decision(event, RecallBiasedPolicy(), state=State())
     assert verdict_matches(event, verdict)
 
 
 async def test_replay_uses_snapshot_for_novelty():
     event = _decided_event(known=frozenset())  # empty snapshot -> food is novel
-    verdict = await replay_decision(event, RecallBiasedPolicy())
+    verdict = await replay_decision(event, RecallBiasedPolicy(), state=State())
     assert "food" in verdict.novel_labels
 
 
@@ -112,7 +125,27 @@ async def test_replay_of_cache_hit_raises():
     event = AuditEvent("i1", "fp1", from_cache=True, verdict={"action": "accept",
         "labels": [], "scores": {}, "novel_labels": [], "reason": "cached"})
     with pytest.raises(ValueError):
-        await replay_decision(event, RecallBiasedPolicy())
+        await replay_decision(event, RecallBiasedPolicy(), state=State())
+
+
+async def test_replay_passes_original_state_to_policy_and_rejects_mismatch():
+    class StatePolicy:
+        async def decide(self, state, candidates, answers, taxonomy):
+            label = state.get("text")[0].payload
+            return Verdict(Action.ACCEPT, [label], {}, [], "from state")
+
+    state = State()
+    state.add(Content("text", "food"))
+    state.flags.add("checked")
+    event = AuditEvent("i1", "fp", state_fingerprint=state_fingerprint(state))
+    assert (await replay_decision(event, StatePolicy(), state=state)).labels == ["food"]
+
+    wrong = State()
+    wrong.add(Content("text", "other"))
+    with pytest.raises(ValueError, match="state does not match"):
+        await replay_decision(event, StatePolicy(), state=wrong)
+    with pytest.raises(TypeError, match="original State"):
+        await replay_decision(event, StatePolicy(), state=None)
 
 
 def test_candidate_carries_rubric_version_through_audit_seam():
@@ -161,7 +194,7 @@ async def test_faithful_when_version_and_verdict_match():
     policy = _FixedPolicy(v, version="1.0")
     event = AuditEvent("i1", "fp", provenance={"policy": provenance_of(policy)},
                        verdict=verdict_to_dict(v))
-    report = await verify_replay(event, _FixedPolicy(v, version="1.0"))
+    report = await verify_replay(event, _FixedPolicy(v, version="1.0"), state=State())
     assert report.verdict_matches is True
     assert report.drift == {}
     assert report.faithful is True
@@ -173,7 +206,7 @@ async def test_version_drift_detected_even_when_verdict_matches():
     event = AuditEvent("i1", "fp",
                        provenance={"policy": provenance_of(_FixedPolicy(v, version="1.0"))},
                        verdict=verdict_to_dict(v))
-    report = await verify_replay(event, _FixedPolicy(v, version="2.0"))
+    report = await verify_replay(event, _FixedPolicy(v, version="2.0"), state=State())
     assert report.verdict_matches is True
     assert "policy" in report.drift
     assert report.drift["policy"].recorded.endswith("@1.0")
@@ -188,7 +221,7 @@ async def test_verdict_mismatch_reported():
     event = AuditEvent("i1", "fp",
                        provenance={"policy": provenance_of(_FixedPolicy(recorded_v, version="1.0"))},
                        verdict=verdict_to_dict(recorded_v))
-    report = await verify_replay(event, _FixedPolicy(other_v, version="1.0"))
+    report = await verify_replay(event, _FixedPolicy(other_v, version="1.0"), state=State())
     assert report.verdict_matches is False
     assert report.faithful is False
     assert report.recorded_verdict["action"] == "accept"
@@ -200,7 +233,7 @@ async def test_verify_replay_of_cache_hit_raises():
     v = Verdict(Action.ACCEPT, [], {}, [], "cached")
     event = AuditEvent("i1", "fp", from_cache=True, verdict=verdict_to_dict(v))
     with pytest.raises(ValueError):
-        await verify_replay(event, _FixedPolicy(v))
+        await verify_replay(event, _FixedPolicy(v), state=State())
 
 
 def test_audit_event_tenant_roundtrip():

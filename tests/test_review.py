@@ -20,16 +20,17 @@ def test_review_task_from_event():
         verdict={"action": "review", "labels": [], "scores": {}, "novel_labels": [], "reason": "unsure"},
         tenant="acme",
     )
-    task = review_task_from_event(event)
+    task = review_task_from_event(event, content_ref="items/c1")
     assert task.correlation_id == "c1"
     assert task.candidates[0]["label"] == "x"
     assert task.answers[0]["key"] == "x"
     assert task.tentative_verdict["action"] == "review"
     assert task.tenant == "acme"
+    assert task.content_ref == "items/c1"
 
 
 def test_review_task_roundtrip():
-    task = ReviewTask("c1", ({"label": "x"},), ({"key": "x"},), {"action": "review"}, "acme")
+    task = ReviewTask("c1", "items/c1", ({"label": "x"},), ({"key": "x"},), {"action": "review"}, "acme")
     assert ReviewTask.from_dict(task.to_dict()) == task
 
 
@@ -39,7 +40,7 @@ def test_resolution_roundtrip():
 
 
 def test_from_dict_tolerates_missing_optionals():
-    task = ReviewTask.from_dict({"correlation_id": "c1"})
+    task = ReviewTask.from_dict({"correlation_id": "c1", "content_ref": "items/c1"})
     assert task.candidates == () and task.tenant is None
     r = ReviewResolution.from_dict(
         {"correlation_id": "c1", "action": "accept", "labels": [], "reviewer": "bob"}
@@ -62,8 +63,8 @@ def test_resolution_unknown_action_raises():
 
 async def test_enqueue_and_drain():
     q = InMemoryReviewQueue()
-    assert await q.enqueue(ReviewTask("c1")) is None
-    await q.enqueue(ReviewTask("c2"))
+    assert await q.enqueue(ReviewTask("c1", "items/c1")) is None
+    await q.enqueue(ReviewTask("c2", "items/c2"))
     assert [t.correlation_id for t in q.pending()] == ["c1", "c2"]
     drained = q.drain()
     assert [t.correlation_id for t in drained] == ["c1", "c2"]
@@ -72,9 +73,14 @@ async def test_enqueue_and_drain():
 
 async def test_pending_is_a_copy():
     q = InMemoryReviewQueue()
-    await q.enqueue(ReviewTask("c1"))
+    await q.enqueue(ReviewTask("c1", "items/c1"))
     q.pending().clear()
     assert len(q.pending()) == 1
+
+
+def test_review_task_requires_content_reference():
+    with pytest.raises(ValueError, match="content_ref"):
+        ReviewTask("c1", "")
 
 
 def test_in_memory_queue_is_a_review_queue():

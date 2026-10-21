@@ -69,6 +69,15 @@ def test_snapshot_is_isolated():
     assert m.for_tenant("acme").failed == 1
 
 
+def test_usage_values_are_copies():
+    m = PerTenantUsage()
+    m.on_decided(_r("acme", Status.DECIDED, 10.0))
+    m.for_tenant("acme").decided = 99
+    m.snapshot()["acme"].total_latency_ms = 999.0
+    assert m.for_tenant("acme").decided == 1
+    assert m.for_tenant("acme").total_latency_ms == 10.0
+
+
 def test_fanout_forwards_all_hooks():
     a, b = _RecordingObserver(), _RecordingObserver()
     fan = FanOutObserver([a, b])

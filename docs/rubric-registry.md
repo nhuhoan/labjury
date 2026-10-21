@@ -48,7 +48,8 @@ class RubricStore(Protocol):
 - **`history`** lists a label's versions in registration order.
 
 `InMemoryRubricStore` is the zero-dependency reference backend, re-exported from
-the top level:
+the top level. It copies questions on write and read so callers cannot mutate a
+published version through the input object or a returned rubric:
 
 ```python
 import labjury as lj

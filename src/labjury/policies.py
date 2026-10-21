@@ -13,7 +13,7 @@ auto-block to a deployer's own policy plugin.
 
 from __future__ import annotations
 
-from labjury.decisions import Answer, Candidate
+from labjury.decisions import Answer, Candidate, ChoiceQuestion, NoulQuestion, ScoreQuestion
 from labjury.plugins import TaxonomyStore
 from labjury.results import Action, Verdict
 from labjury.state import State
@@ -29,6 +29,18 @@ class RecallBiasedPolicy:
         """Thresholds, captured into the audit trail as decision provenance."""
         return {"accept_threshold": self._accept, "clean_threshold": self._clean}
 
+    @staticmethod
+    def _matches_label(candidate: Candidate, answer: Answer) -> bool:
+        question = candidate.question
+        if isinstance(question, NoulQuestion):
+            return answer.value is True
+        if isinstance(question, ChoiceQuestion):
+            return candidate.label in question.options and answer.value == candidate.label
+        if isinstance(question, ScoreQuestion):
+            # Only the highest ordered level is a positive label signal.
+            return answer.value == question.levels[-1]
+        return False
+
     async def decide(
         self,
         state: State,
@@ -36,6 +48,9 @@ class RecallBiasedPolicy:
         answers: list[Answer],
         taxonomy: TaxonomyStore,
     ) -> Verdict:
+        if not candidates:
+            return Verdict(Action.REVIEW, [], {}, [], "no candidates; routed to review")
+
         by_key = {a.key: a for a in answers}
         scores: dict[str, float] = {}
 
@@ -65,7 +80,7 @@ class RecallBiasedPolicy:
             if a is None:
                 continue
             scores[c.label] = a.confidence
-            if a.confidence >= self._accept:
+            if a.confidence >= self._accept and self._matches_label(c, a):
                 accepted.append(c.label)
                 if not await taxonomy.is_known(c.label):
                     await taxonomy.propose(c.label)

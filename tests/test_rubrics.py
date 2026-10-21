@@ -1,6 +1,6 @@
 import pytest
 
-from labjury.decisions import NoulQuestion
+from labjury.decisions import ChoiceQuestion, NoulQuestion
 from labjury.plugins import RubricStore
 from labjury.rubrics import InMemoryRubricStore, Rubric
 from labjury.testing import assert_rubric_store_contract
@@ -66,3 +66,18 @@ def test_in_memory_store_is_a_rubric_store():
 
 async def test_conformance_suite_passes_for_in_memory():
     await assert_rubric_store_contract(InMemoryRubricStore)
+
+
+async def test_published_rubric_cannot_change_through_input_or_returned_question():
+    store = InMemoryRubricStore()
+    question = ChoiceQuestion("q", "original?", ["yes", "no"])
+    published = await store.register("label", question, "v1")
+    question.prompt = "changed input?"
+    question.options.append("maybe")
+    published.question.prompt = "changed result?"
+    resolved = await store.resolve("label")
+    resolved.question.options.append("other")
+    historical = await store.get("label", "v1")
+    assert historical.question == ChoiceQuestion("q", "original?", ["yes", "no"])
+    with pytest.raises(ValueError):
+        await store.register("label", question, "v1")

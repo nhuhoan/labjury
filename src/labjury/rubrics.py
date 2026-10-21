@@ -15,6 +15,7 @@ durable backends are bring-your-own (see :func:`labjury.testing.assert_rubric_st
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 
 from labjury.decisions import Question
@@ -45,19 +46,20 @@ class InMemoryRubricStore:
                     f"rubric {label!r} version {version!r} already published with a "
                     "different question; a published version is immutable"
                 )
-            return existing
-        rubric = Rubric(label, question, version)
+            return deepcopy(existing)
+        rubric = Rubric(label, deepcopy(question), version)
         versions[version] = rubric
-        return rubric
+        return deepcopy(rubric)
 
     async def resolve(self, label: str) -> Rubric | None:
         versions = self._by_label.get(label)
         if not versions:
             return None
-        return next(reversed(versions.values()))
+        return deepcopy(next(reversed(versions.values())))
 
     async def get(self, label: str, version: str) -> Rubric | None:
-        return self._by_label.get(label, {}).get(version)
+        rubric = self._by_label.get(label, {}).get(version)
+        return deepcopy(rubric) if rubric is not None else None
 
     async def history(self, label: str) -> list[str]:
         return list(self._by_label.get(label, {}))

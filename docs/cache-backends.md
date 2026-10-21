@@ -16,6 +16,11 @@ class Cache(Protocol):
 one. That's the whole contract — invalidation, eviction and bulk operations are
 your store's concern, not the framework's.
 
+The engine caches `ACCEPT` and `BLOCK` verdicts. It re-scores `REVIEW` decisions
+for each item so the item's audit event has candidates and answers for human review.
+The concurrency limit applies across simultaneous `process` and `process_batch`
+calls on the same engine instance.
+
 The zero-dependency default is `labjury.InMemoryCache` (a process-local dict):
 
 ```python

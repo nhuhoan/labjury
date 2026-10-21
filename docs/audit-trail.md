@@ -26,7 +26,9 @@ Each `AuditEvent` carries: `correlation_id`, `input_fingerprint` (a hash — the
 **raw content is never stored**), `modalities`, `used_proposer`, the
 `candidates` and the scorer's `answers`, the taxonomy's official `known_labels`
 at decision time, `provenance` (scorer and policy name/version/params), and the
-`verdict`. A cache-served decision records a thin event with `from_cache=True`.
+`verdict`. It also records `state_fingerprint` to verify the original `State`
+provided at replay time. A cache-served decision records a thin event with
+`from_cache=True`.
 
 A failing audit backend never breaks a decision — recording is best-effort; the
 backend owns its own durability and retry.
@@ -36,14 +38,17 @@ backend owns its own durability and retry.
 ```python
 from labjury import replay_decision, verdict_matches, RecallBiasedPolicy
 
-verdict = await replay_decision(event, RecallBiasedPolicy())
+state = ...  # original State, rebuilt from your retained item and context
+verdict = await replay_decision(event, RecallBiasedPolicy(), state=state)
 assert verdict_matches(event, verdict)
 ```
 
 Replay re-runs the **decision policy** over the recorded candidates, answers,
-and taxonomy snapshot — it does *not* re-call the scorer/LLM (those outputs are
-recorded, not reproduced). So you can explain *why* a verdict happened, and test
-what a policy change would have done to historical decisions. Replaying a
+taxonomy snapshot, and the original `State`. It checks the State fingerprint
+before calling the policy; older audit records without that fingerprint require
+the caller to supply the correct State. It does *not* re-call the scorer/LLM
+(those outputs are recorded, not reproduced). So you can explain *why* a verdict
+happened, and test what a policy change would have done to historical decisions. Replaying a
 `from_cache` event raises `ValueError` — replay the original decision's event.
 
 For a one-line *verification* — did the verdict reproduce, and has the policy

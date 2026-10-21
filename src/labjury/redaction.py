@@ -92,7 +92,7 @@ class RegexRedactor:
         for mod in state.modalities():
             for c in state.get(mod):
                 if c.modality == "text":
-                    out.add(Content("text", self._mask(c.payload), c.meta))
+                    out.add(Content("text", self._mask(c.payload), self._mask_value(c.meta)))
                 else:
                     out.add(c)
         return out
@@ -104,3 +104,15 @@ class RegexRedactor:
         text = _CARD.sub("[CARD]", text)
         text = _PHONE.sub("[PHONE]", text)
         return text
+
+    @classmethod
+    def _mask_value(cls, value):
+        if isinstance(value, str):
+            return cls._mask(value)
+        if isinstance(value, dict):
+            return {cls._mask_value(k): cls._mask_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [cls._mask_value(v) for v in value]
+        if isinstance(value, tuple):
+            return tuple(cls._mask_value(v) for v in value)
+        return value

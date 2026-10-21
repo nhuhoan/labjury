@@ -14,7 +14,7 @@ orchestration.
 engine.process(item) -> ItemResult(status=REVIEW)
           │
           ▼  (deployer sees a REVIEW result; reads its audit event)
-review_task_from_event(event) -> ReviewTask
+review_task_from_event(event, content_ref="items/post-42") -> ReviewTask
           │
           ▼  queue.enqueue(task)        # fire-and-forget
    [ the deployer's review backend: ticketing tool, labeling UI, SQS, DB … ]
@@ -35,8 +35,9 @@ review workflow.
 ```python
 import labjury as lj
 
-task = lj.review_task_from_event(event)   # event: the decision's AuditEvent
+task = lj.review_task_from_event(event, content_ref="items/post-42")
 task.correlation_id      # ties back to the item
+task.content_ref         # key used by your review system to fetch the original content
 task.candidates          # the proposed labels + their questions
 task.answers             # what the scorer answered
 task.tentative_verdict   # what the machine tentatively decided (REVIEW)
@@ -44,10 +45,10 @@ task.tenant              # who it was for
 task.to_dict()           # JSON-serializable — it crosses to your review system
 ```
 
-The review package *is* the audit package: an `AuditEvent` already carries
-everything a human needs, so `review_task_from_event` just repackages it. (Human
-review therefore pairs naturally with the audit trail enabled — which an enterprise
-runs anyway.) You can also build a `ReviewTask` directly.
+The audit event contains the decision context, not the original content.
+`content_ref` is a required key or URI in your own storage; the review system
+uses it (with `tenant` where applicable) to load the content. Do not put raw
+content in the audit log. You can also build a `ReviewTask` directly.
 
 ## `ReviewQueue` — the fire-and-forget seam
 
@@ -84,7 +85,7 @@ event = ...                              # the decision's original AuditEvent
 resolution = lj.ReviewResolution("post-42", "block", ["nsfw"], reviewer="alice")
 
 record = lj.override_event(event, resolution)
-await audit_log.append(record)           # your AuditLog, your timing
+await audit_log.record(record)           # your AuditLog, your timing
 ```
 
 The produced event:

@@ -77,8 +77,7 @@ detector behind the same protocol.
 ## What this is not
 
 - No built-in injection classifier — the heuristic is a baseline, not a control.
-- No hardening of the built-in `LLMJudgeScorer` prompt: it embeds no untrusted
-  content in its prompt today (it renders only developer/proposer-authored
-  questions), so there is nothing to delimit. A scorer that *does* embed
-  untrusted content owns that hardening in its own design.
+- The built-in `LLMJudgeScorer` includes item content in its prompt. It does not
+  provide prompt-injection detection; wrap it with `GuardedScorer` and a guard
+  appropriate for your inputs when that boundary matters.
 - No image/audio injection detection, and no secrets handling (a separate slice).

@@ -7,7 +7,7 @@ exporters (Prometheus, OTEL) are reference plugins.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Iterable, Protocol, runtime_checkable
 
 from labjury.results import ItemResult
@@ -98,11 +98,12 @@ class PerTenantUsage:
 
     def for_tenant(self, tenant: str | None) -> TenantUsage:
         """This tenant's usage, or a fresh zero tally — never inserts or raises."""
-        return self._by_tenant.get(tenant) or TenantUsage()
+        usage = self._by_tenant.get(tenant)
+        return replace(usage) if usage is not None else TenantUsage()
 
     def snapshot(self) -> dict[str | None, TenantUsage]:
-        """A shallow copy of the per-tenant mapping (the caller can't mutate ours)."""
-        return dict(self._by_tenant)
+        """A snapshot whose values cannot mutate the live counters."""
+        return {tenant: replace(usage) for tenant, usage in self._by_tenant.items()}
 
 
 class FanOutObserver:

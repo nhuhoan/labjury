@@ -63,7 +63,8 @@ inner plugin, so a wrapped plugin routes exactly like the plugin it wraps.
 ## The baseline redactor
 
 `RegexRedactor` masks obvious *text* patterns — email → `[EMAIL]`, phone →
-`[PHONE]`, card → `[CARD]`. It is a **baseline and a test fixture, not a
+`[PHONE]`, card → `[CARD]` — in text payloads and their nested metadata. It is a
+**baseline and a test fixture, not a
 compliance control**: it misses names, addresses, non-text PII, and obfuscated
 forms. Use it to get running on day one, then replace it with a real redactor
 behind the same protocol.

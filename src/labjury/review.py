@@ -28,15 +28,21 @@ class ReviewTask:
     to an external review system, so it is JSON-serializable."""
 
     correlation_id: str
+    content_ref: str
     candidates: tuple[dict, ...] = ()
     answers: tuple[dict, ...] = ()
     tentative_verdict: dict | None = None
     tenant: str | None = None
     created_at: str = field(default_factory=_now_iso)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.content_ref, str) or not self.content_ref.strip():
+            raise ValueError("content_ref must identify retrievable source content")
+
     def to_dict(self) -> dict:
         return {
             "correlation_id": self.correlation_id,
+            "content_ref": self.content_ref,
             "candidates": [dict(c) for c in self.candidates],
             "answers": [dict(a) for a in self.answers],
             "tentative_verdict": self.tentative_verdict,
@@ -48,6 +54,7 @@ class ReviewTask:
     def from_dict(cls, d: dict) -> "ReviewTask":
         return cls(
             correlation_id=d["correlation_id"],
+            content_ref=d["content_ref"],
             candidates=tuple(d.get("candidates", ())),
             answers=tuple(d.get("answers", ())),
             tentative_verdict=d.get("tentative_verdict"),
@@ -120,11 +127,13 @@ class InMemoryReviewQueue:
         return tasks
 
 
-def review_task_from_event(event: AuditEvent) -> ReviewTask:
+def review_task_from_event(event: AuditEvent, *, content_ref: str) -> ReviewTask:
     """Build a :class:`ReviewTask` from a recorded decision — the audit event
-    already carries the candidates, answers, tentative verdict, and tenant."""
+    already carries the candidates, answers, tentative verdict, and tenant.
+    ``content_ref`` is an application-owned key for fetching the original item."""
     return ReviewTask(
         correlation_id=event.correlation_id,
+        content_ref=content_ref,
         candidates=tuple(event.candidates),
         answers=tuple(event.answers),
         tentative_verdict=event.verdict,
@@ -160,6 +169,7 @@ def override_event(event: AuditEvent, resolution: ReviewResolution) -> AuditEven
         known_labels=event.known_labels,
         verdict=verdict_to_dict(resolution.to_verdict()),
         tenant=event.tenant,
+        state_fingerprint=event.state_fingerprint,
         provenance={
             "reviewer": ProvenanceRef(
                 resolution.reviewer,

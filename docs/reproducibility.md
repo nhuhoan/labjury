@@ -7,8 +7,8 @@ verification call.
 
 ## What a decision already pins
 
-Every `AuditEvent` (see [audit-trail.md](audit-trail.md)) records the full input to
-one decision:
+Every decision `AuditEvent` (see [audit-trail.md](audit-trail.md)) records the
+policy inputs that can be retained without raw content:
 
 - the **candidates** — each with its `Question` and, since the rubric registry,
   its [`rubric_version`](rubric-registry.md);
@@ -18,14 +18,17 @@ one decision:
 - the **provenance** of the scorer and policy — `ProvenanceRef(name, version,
   params)`.
 
-That is everything needed to re-run the *deterministic* half of the pipeline.
+The caller also supplies the original `State` because raw content is not stored
+in the audit record. New records include a `state_fingerprint` to catch a
+mismatched State before replay.
 
 ## `verify_replay`
 
 ```python
 import labjury as lj
 
-report = await lj.verify_replay(event, current_policy)
+state = ...  # rebuild from the retained item and its original context
+report = await lj.verify_replay(event, current_policy, state=state)
 
 report.verdict_matches   # did replaying the policy reproduce the recorded verdict?
 report.drift             # {"policy": VersionChange(recorded="RecallBiasedPolicy@1.0",

@@ -66,8 +66,10 @@ class _FakeScorer:
     def __init__(self, confidence=0.95, slow=False):
         self._confidence = confidence
         self._slow = slow
+        self.calls = 0
 
     async def score(self, state, questions):
+        self.calls += 1
         if self._slow:
             await asyncio.sleep(0.05)
         return [Answer(q.key, value="food", confidence=self._confidence) for q in questions]
@@ -139,12 +141,13 @@ async def test_end_to_end_accept():
     assert r.verdict.action is Action.ACCEPT and r.correlation_id == "i1"
 
 
-async def test_cache_hit_skips_expensive_stages():
+async def test_cache_hit_skips_scoring():
     eng, proposer = make_engine(track_proposer=True)
     item = Item("i1", {"text": "x"})
-    await eng.cache.put(eng._key(item), Verdict(Action.ACCEPT, ["food"], {}, [], "cached"))
+    await eng.process(item)
     r = await eng.process(item)
-    assert r.verdict.reason == "cached" and proposer.calls == 0
+    assert r.verdict.reason == "accepted" and proposer.calls == 2
+    assert eng._scorers[0].calls == 1
 
 
 async def test_batch_results_unordered_but_complete():
@@ -171,6 +174,44 @@ async def test_saturation_returns_retry_later():
     eng = make_engine(max_concurrency=1, slow_scorer=True)
     results = await eng.process_batch([Item(f"i{n}", {"text": "t"}) for n in range(4)])
     assert any(r.status is Status.RETRY_LATER for r in results)
+
+
+async def test_concurrent_batches_share_one_limit():
+    eng = make_engine(max_concurrency=1, slow_scorer=True)
+    first, second = await asyncio.gather(
+        eng.process_batch([Item("a", {"text": "a"})]),
+        eng.process_batch([Item("b", {"text": "b"})]),
+    )
+    assert {first[0].status, second[0].status} == {
+        Status.DECIDED, Status.RETRY_LATER
+    }
+
+
+async def test_direct_process_respects_same_limit():
+    eng = make_engine(max_concurrency=1, slow_scorer=True)
+    first, second = await asyncio.gather(
+        eng.process(Item("a", {"text": "a"})),
+        eng.process(Item("b", {"text": "b"})),
+    )
+    assert {first.status, second.status} == {Status.DECIDED, Status.RETRY_LATER}
+    retry = next(r for r in (first, second) if r.status is Status.RETRY_LATER)
+    assert retry.latency_ms is None
+
+
+async def test_cancelled_batch_releases_capacity():
+    eng = make_engine(max_concurrency=1, slow_scorer=True)
+    task = asyncio.create_task(eng.process_batch([Item("a", {"text": "a"})]))
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    result = await eng.process(Item("b", {"text": "b"}))
+    assert result.status is Status.DECIDED
+
+
+def test_invalid_concurrency_limit_is_rejected():
+    with pytest.raises(ValueError, match="max_concurrency"):
+        make_engine(max_concurrency=0)
 
 
 async def test_visual_fast_path_scores_standing_candidates():
@@ -208,27 +249,76 @@ async def test_proposer_receives_known_labels_from_taxonomy():
 
 
 async def test_decided_item_records_full_event():
+    from labjury.audit import replay_decision, state_fingerprint, verdict_matches
+
     audit = InMemoryAuditLog()
     eng = make_engine(audit=audit)
     await eng.process(Item("i1", {"text": "x"}))
     [e] = await audit.by_correlation("i1")
     assert e.from_cache is False and e.used_proposer is True
-    assert e.input_fingerprint == eng._key(Item("i1", {"text": "x"}))  # fingerprint, not content
+    assert len(e.input_fingerprint) == 64  # fingerprint, not content
     assert e.candidates and e.answers
     assert "policy" in e.provenance and "scorer" in e.provenance
     assert e.provenance["policy"].params is not None
     assert e.known_labels == frozenset()  # fresh taxonomy
     assert e.verdict["action"] in ("accept", "review")
+    state = State()
+    state.add(Content("text", "x"))
+    assert e.state_fingerprint == state_fingerprint(state)
+    assert verdict_matches(
+        e, await replay_decision(e, RecallBiasedPolicy(), state=state)
+    )
 
 
 async def test_cache_hit_records_thin_event():
     audit = InMemoryAuditLog()
     eng = make_engine(audit=audit)
     item = Item("i1", {"text": "x"})
-    await eng.cache.put(eng._key(item), Verdict(Action.ACCEPT, ["food"], {}, [], "cached"))
     await eng.process(item)
-    [e] = await audit.by_correlation("i1")
-    assert e.from_cache is True and e.candidates == () and e.verdict["reason"] == "cached"
+    await eng.process(item)
+    _, e = await audit.by_correlation("i1")
+    assert e.from_cache is True and e.candidates == () and e.verdict["reason"] == "accepted"
+
+
+async def test_review_is_rescored_and_audited_for_each_item():
+    from labjury.review import review_task_from_event
+
+    audit = InMemoryAuditLog()
+    scorer = _ImageScorer(answer=Answer("nudity", value=True, confidence=0.95))
+    eng = Engine(
+        context_builders=[_ImageBuilder()],
+        proposers=[],
+        scorers=[scorer],
+        policy=RecallBiasedPolicy(),
+        sink=CollectingSink(),
+        cache=InMemoryCache(),
+        taxonomy=InMemoryTaxonomyStore(),
+        observer=InMemoryObserver(),
+        audit=audit,
+        standing_candidates=[Candidate("nudity", "violation", NoulQuestion("nudity", "nudity?"))],
+    )
+    for cid in ("first", "second"):
+        result = await eng.process(Item(cid, {"image": b"same"}))
+        assert result.status is Status.REVIEW
+        [event] = await audit.by_correlation(cid)
+        task = review_task_from_event(event, content_ref=f"items/{cid}")
+        assert event.from_cache is False
+        assert task.candidates and task.answers
+    assert scorer.calls == 2
+
+
+async def test_existing_cached_review_is_ignored():
+    class OldReviewCache(InMemoryCache):
+        async def get(self, key):
+            return Verdict(Action.REVIEW, [], {}, [], "old review")
+
+    audit = InMemoryAuditLog()
+    eng = make_engine(audit=audit)
+    eng.cache = OldReviewCache()
+    result = await eng.process(Item("i1", {"text": "food"}))
+    [event] = await audit.by_correlation("i1")
+    assert result.verdict.reason == "accepted"
+    assert event.from_cache is False and event.candidates and event.answers
 
 
 async def test_audit_failure_does_not_break_process():
@@ -276,3 +366,62 @@ async def test_tenant_flows_to_result_and_audit():
     assert result.tenant == "acme"
     events = await audit.by_correlation("i1")
     assert events and events[0].tenant == "acme"
+
+
+async def test_cache_isolated_by_tenant_and_taxonomy():
+    eng, proposer = make_engine(track_proposer=True)
+    acme = Item("a", {"text": "same"}, tenant="acme")
+    other = Item("b", {"text": "same"}, tenant="other")
+    await eng.process(acme)
+    await eng.process(other)
+    assert proposer.calls == 2
+    assert eng._key(acme) != eng._key(other)
+
+
+async def test_cache_invalidated_by_taxonomy_change():
+    audit = InMemoryAuditLog()
+    eng = make_engine(audit=audit)
+    item = Item("i1", {"text": "x"})
+    await eng.process(item)
+    await eng._taxonomy.promote("food")
+    await eng.process(item)
+    first, second = await audit.by_correlation("i1")
+    assert second.from_cache is False
+    assert first.input_fingerprint != second.input_fingerprint
+
+
+async def test_cache_invalidated_by_rubric_change():
+    class ChangingProposer(_FoodProposer):
+        version = "v1"
+
+        async def propose(self, state, context):
+            self.calls += 1
+            return [
+                Candidate(
+                    "food", "tag", ChoiceQuestion("food_q", "food?", ["food"]),
+                    rubric_version=self.version,
+                )
+            ]
+
+    proposer = ChangingProposer()
+    audit = InMemoryAuditLog()
+    taxonomy = InMemoryTaxonomyStore()
+    await taxonomy.promote("food")
+    eng = Engine(
+        context_builders=[_TextBuilder()],
+        proposers=[proposer],
+        scorers=[_FakeScorer()],
+        policy=RecallBiasedPolicy(),
+        sink=CollectingSink(),
+        cache=InMemoryCache(),
+        taxonomy=taxonomy,
+        observer=InMemoryObserver(),
+        audit=audit,
+    )
+    item = Item("i1", {"text": "x"})
+    await eng.process(item)
+    proposer.version = "v2"
+    await eng.process(item)
+    first, second = await audit.by_correlation("i1")
+    assert second.from_cache is False
+    assert first.input_fingerprint != second.input_fingerprint

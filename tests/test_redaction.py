@@ -1,6 +1,7 @@
 import pytest
 
 from labjury.plugins import Proposer, ProposalContext, Redactor, Scorer
+from labjury.decisions import NoulQuestion
 from labjury.redaction import (
     RedactingProposer,
     RedactingScorer,
@@ -8,6 +9,7 @@ from labjury.redaction import (
     UnredactedModalityError,
 )
 from labjury.state import Content, State
+from labjury.scorers.llm_judge import LLMJudgeScorer
 
 
 class _RecordingScorer:
@@ -147,3 +149,20 @@ async def test_regex_returns_new_state_original_unchanged():
 
 def test_regex_redactor_is_a_redactor():
     assert isinstance(RegexRedactor(), Redactor)
+
+
+async def test_text_metadata_is_masked_before_llm_prompt():
+    prompts = []
+
+    async def chat(prompt):
+        prompts.append(prompt)
+        return '{"value": true, "confidence": 0.95}'
+
+    state = State()
+    state.add(Content("text", "hello", {"contact": ["a@b.com", {"0912345678": "call"}]}))
+    await RedactingScorer(LLMJudgeScorer(chat), RegexRedactor()).score(
+        state, [NoulQuestion("q", "food?")]
+    )
+    assert "a@b.com" not in prompts[0] and "0912345678" not in prompts[0]
+    assert "[EMAIL]" in prompts[0] and "[PHONE]" in prompts[0]
+    assert state.get("text")[0].meta["contact"][0] == "a@b.com"
