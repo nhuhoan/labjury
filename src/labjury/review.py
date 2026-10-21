@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from labjury.audit import AuditEvent
+from labjury.audit import AuditEvent, ProvenanceRef, verdict_to_dict
 from labjury.results import Action, Verdict
 
 
@@ -129,4 +129,42 @@ def review_task_from_event(event: AuditEvent) -> ReviewTask:
         answers=tuple(event.answers),
         tentative_verdict=event.verdict,
         tenant=event.tenant,
+    )
+
+
+def override_event(event: AuditEvent, resolution: ReviewResolution) -> AuditEvent:
+    """Record a human override as a new immutable :class:`AuditEvent`.
+
+    The inverse of :func:`review_task_from_event`: given the original decision's
+    event and a human's :class:`ReviewResolution`, produce a distinct event (fresh
+    ``event_id``/``occurred_at``) that links to the original by ``correlation_id``,
+    carries forward the inputs the human saw, records the human's verdict, and
+    attributes the decision to the reviewer alone (the machine's provenance stays
+    on the original event — same ``correlation_id`` — so the two together tell the
+    full story). The deployer appends the result to their own ``AuditLog``.
+
+    Raises :class:`ValueError` if the resolution's ``correlation_id`` does not
+    match the event's — recording an override against the wrong decision.
+    """
+    if resolution.correlation_id != event.correlation_id:
+        raise ValueError(
+            f"resolution correlation_id {resolution.correlation_id!r} does not "
+            f"match event {event.correlation_id!r}"
+        )
+    return AuditEvent(
+        correlation_id=event.correlation_id,
+        input_fingerprint=event.input_fingerprint,
+        modalities=event.modalities,
+        candidates=event.candidates,
+        answers=event.answers,
+        known_labels=event.known_labels,
+        verdict=verdict_to_dict(resolution.to_verdict()),
+        tenant=event.tenant,
+        provenance={
+            "reviewer": ProvenanceRef(
+                resolution.reviewer,
+                None,
+                {"note": resolution.note, "decided_at": resolution.decided_at},
+            )
+        },
     )

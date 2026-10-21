@@ -73,13 +73,36 @@ verdict = resolution.to_verdict()    # Verdict(action=BLOCK, labels=["nsfw"], �
 human produces no model scores; an unknown action string raises). The deployer wraps
 it in an `ItemResult`, emits it to their sink, or records it — as they see fit.
 
-## Recording the override (extension)
+## Auditing the override
 
-To keep "machine said REVIEW → human decided X" auditable, build an `AuditEvent`
-from the task and the resolution's verdict, tagged with a reviewer provenance, and
-record it into your `AuditLog`. LabJury leaves the *when* and *how* of that write to
-you (fire-and-forget), so it is a few lines of deployer code composing existing
-pieces rather than a built-in.
+The hand-off out (`review_task_from_event`) is a one-way exit from the audit
+trail; `override_event` is the way back in. It records "machine said REVIEW →
+reviewer *alice* decided BLOCK at *T*" as a new immutable `AuditEvent`:
+
+```python
+event = ...                              # the decision's original AuditEvent
+resolution = lj.ReviewResolution("post-42", "block", ["nsfw"], reviewer="alice")
+
+record = lj.override_event(event, resolution)
+await audit_log.append(record)           # your AuditLog, your timing
+```
+
+The produced event:
+
+- **links** to the original by `correlation_id` (and raises `ValueError` if the
+  resolution's `correlation_id` doesn't match — recording an override against the
+  wrong decision);
+- **carries forward the inputs the human saw** (`input_fingerprint`, `modalities`,
+  `candidates`, `answers`, `known_labels`, `tenant`);
+- **records the human's verdict** (`resolution.to_verdict()`, scores empty);
+- **attributes it to the reviewer alone** — `provenance["reviewer"]` holds the
+  reviewer name plus the note and `decided_at`; the machine's scorer/policy
+  provenance stays on the original event, so the two events (same
+  `correlation_id`) together tell the full story;
+- is a **distinct event** (fresh `event_id`/`occurred_at`).
+
+It is a pure function — the deployer still owns *when* and *how* the write
+happens (fire-and-forget), consistent with the rest of this contract.
 
 ## Non-goals
 

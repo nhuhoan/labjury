@@ -79,3 +79,98 @@ async def test_pending_is_a_copy():
 
 def test_in_memory_queue_is_a_review_queue():
     assert isinstance(InMemoryReviewQueue(), ReviewQueue)
+
+
+# -- override_event: recording a human override back to the audit trail --------
+
+
+def _orig():
+    from labjury.audit import AuditEvent
+
+    return AuditEvent(
+        "c1",
+        "fp123",
+        modalities=frozenset({"text"}),
+        candidates=({"label": "nsfw"},),
+        answers=({"q": "a"},),
+        known_labels=frozenset({"nsfw"}),
+        verdict={
+            "action": "review",
+            "labels": [],
+            "scores": {},
+            "novel_labels": [],
+            "reason": "borderline",
+        },
+        tenant="acme",
+    )
+
+
+def _res(correlation_id="c1"):
+    from labjury.review import ReviewResolution
+
+    return ReviewResolution(
+        correlation_id,
+        "block",
+        ["nsfw"],
+        "alice",
+        note="confirmed",
+        decided_at="2026-10-21T00:00:00+00:00",
+    )
+
+
+def test_correlation_mismatch_raises():
+    import pytest
+
+    from labjury.review import override_event
+
+    with pytest.raises(ValueError):
+        override_event(_orig(), _res(correlation_id="other"))
+
+
+def test_verdict_is_human_decision():
+    from labjury.audit import verdict_to_dict
+    from labjury.review import override_event
+
+    ev = override_event(_orig(), _res())
+    assert ev.verdict == verdict_to_dict(_res().to_verdict())
+    assert ev.verdict["action"] == "block" and ev.verdict["scores"] == {}
+
+
+def test_reviewer_provenance():
+    from labjury.review import override_event
+
+    ev = override_event(_orig(), _res())
+    assert set(ev.provenance) == {"reviewer"}
+    ref = ev.provenance["reviewer"]
+    assert ref.name == "alice"
+    assert ref.params["note"] == "confirmed"
+    assert ref.params["decided_at"] == "2026-10-21T00:00:00+00:00"
+
+
+def test_inputs_carried_forward():
+    from labjury.review import override_event
+
+    orig = _orig()
+    ev = override_event(orig, _res())
+    assert ev.correlation_id == "c1"
+    assert ev.input_fingerprint == "fp123"
+    assert ev.candidates == orig.candidates
+    assert ev.answers == orig.answers
+    assert ev.known_labels == orig.known_labels
+    assert ev.tenant == "acme"
+
+
+def test_fresh_event_id():
+    from labjury.review import override_event
+
+    orig = _orig()
+    ev = override_event(orig, _res())
+    assert ev.event_id != orig.event_id
+
+
+def test_roundtrips():
+    from labjury.audit import AuditEvent
+    from labjury.review import override_event
+
+    ev = override_event(_orig(), _res())
+    assert AuditEvent.from_dict(ev.to_dict()) == ev
