@@ -20,6 +20,7 @@ from labjury.defaults import (
     InMemoryCache,
     NullAuditLog,
 )
+from labjury.cost import CostMeter, TokenUsage
 from labjury.engine import Engine
 from labjury.observability import (
     FanOutObserver,
@@ -213,6 +214,9 @@ __all__ = [
     "TenantUsage",
     "PerTenantUsage",
     "FanOutObserver",
+    # cost metering
+    "CostMeter",
+    "TokenUsage",
     # human review
     "ReviewTask",
     "ReviewResolution",
