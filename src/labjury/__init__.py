@@ -70,6 +70,7 @@ from labjury.review import (
     InMemoryReviewQueue,
     ReviewResolution,
     ReviewTask,
+    override_event,
     review_task_from_event,
 )
 from labjury.audit import (
@@ -215,6 +216,7 @@ __all__ = [
     "ReviewQueue",
     "InMemoryReviewQueue",
     "review_task_from_event",
+    "override_event",
     # evaluation
     "LabelScore",
     "EvalReport",
