@@ -167,10 +167,12 @@ def score_actions(
 
 @dataclass(frozen=True)
 class GoldenCase:
-    """A ground-truth example: an item and the labels a correct pipeline should emit."""
+    """A ground-truth example: an item, the labels a correct pipeline should emit,
+    and optionally the action it should ship (for :func:`run_action_evaluation`)."""
 
     item: Item
     expected_labels: frozenset[str]
+    expected_action: Action | None = None
 
 
 async def run_evaluation(engine, cases: Iterable[GoldenCase]) -> EvalReport:
@@ -184,6 +186,25 @@ async def run_evaluation(engine, cases: Iterable[GoldenCase]) -> EvalReport:
         predicted = set(result.verdict.labels) if result.verdict else set()
         pairs.append((set(case.expected_labels), predicted))
     return score_predictions(pairs)
+
+
+async def run_action_evaluation(engine, cases: Iterable[GoldenCase]) -> ActionReport:
+    """Run a golden set through ``engine`` and score the verdict *action*.
+
+    Each case must carry an ``expected_action`` (raises :class:`ValueError`
+    otherwise). A result with no verdict (e.g. a ``FAILED`` item) predicts no
+    action (``None`` → the ``"none"`` bucket), counting against the expected
+    action."""
+    pairs: list[tuple[Action, Action | None]] = []
+    for case in cases:
+        if case.expected_action is None:
+            raise ValueError(
+                "GoldenCase.expected_action is required for action evaluation"
+            )
+        result = await engine.process(case.item)
+        predicted = result.verdict.action if result.verdict else None
+        pairs.append((case.expected_action, predicted))
+    return score_actions(pairs)
 
 
 @dataclass(frozen=True)

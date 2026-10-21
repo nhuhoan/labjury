@@ -151,3 +151,39 @@ def test_empty():
 
     r = score_actions([])
     assert r.accuracy == 0.0 and r.per_action == {}
+
+
+async def test_run_action_eval():
+    from labjury.evaluation import GoldenCase, run_action_evaluation
+    from labjury.results import Action, ItemResult, Status, Verdict
+    from labjury.state import Item
+
+    class _Engine:
+        async def process(self, item):
+            if item.id == "fail":
+                return ItemResult("fail", Status.FAILED)
+            v = Verdict(Action.BLOCK, ["nsfw"], {}, [], "r")
+            return ItemResult(item.id, Status.DECIDED, v)
+
+    cases = [
+        GoldenCase(Item("ok", {}), frozenset(), expected_action=Action.BLOCK),
+        GoldenCase(Item("fail", {}), frozenset(), expected_action=Action.BLOCK),
+    ]
+    r = await run_action_evaluation(_Engine(), cases)
+    assert r.confusion[("block", "block")] == 1
+    assert r.confusion[("block", "none")] == 1  # FAILED -> no action
+    assert r.per_action["block"].tp == 1 and r.per_action["block"].fn == 1
+
+
+async def test_missing_expected_action_raises():
+    import pytest
+
+    from labjury.evaluation import GoldenCase, run_action_evaluation
+    from labjury.state import Item
+
+    class _Engine:
+        async def process(self, item):
+            raise AssertionError("should raise before processing")
+
+    with pytest.raises(ValueError):
+        await run_action_evaluation(_Engine(), [GoldenCase(Item("i", {}), frozenset())])
