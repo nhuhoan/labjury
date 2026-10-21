@@ -76,8 +76,10 @@ from labjury.audit import (
     AuditEvent,
     ProvenanceRef,
     ReplayReport,
+    RubricDrift,
     VersionChange,
     replay_decision,
+    rubric_drift,
     verdict_matches,
     verify_replay,
 )
@@ -170,6 +172,8 @@ __all__ = [
     "verify_replay",
     "ReplayReport",
     "VersionChange",
+    "rubric_drift",
+    "RubricDrift",
     # testing helpers
     "assert_taxonomy_store_contract",
     "assert_audit_log_contract",
