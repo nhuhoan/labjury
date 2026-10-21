@@ -187,3 +187,15 @@ async def test_missing_expected_action_raises():
 
     with pytest.raises(ValueError):
         await run_action_evaluation(_Engine(), [GoldenCase(Item("i", {}), frozenset())])
+
+
+def test_misroute_predicted_action_precision_drops():
+    # The spec's Review Focus: in a misroute the *predicted* action's precision
+    # drops too, so the predicted-only action must get a per_action row.
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    r = score_actions([(Action.BLOCK, Action.REVIEW)])
+    assert r.per_action["review"].fp == 1
+    assert r.per_action["review"].precision == 0.0
+    assert "none" not in r.per_action  # the failure bucket is still not a class

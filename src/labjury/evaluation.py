@@ -152,7 +152,9 @@ def score_actions(
         n_cases += 1
         key = (expected.value, predicted.value if predicted is not None else "none")
         confusion[key] = confusion.get(key, 0) + 1
-    real_actions = {e for (e, _p) in confusion}
+    # one-vs-rest over every real action seen as expected OR predicted; "none"
+    # is the no-action failure bucket, not a class, so it earns no row.
+    real_actions = {a for key in confusion for a in key} - {"none"}
     per_action = {
         a: LabelScore(
             a,
