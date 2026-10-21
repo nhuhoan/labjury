@@ -289,7 +289,9 @@ Is the pipeline accurate, and did a change make it worse? `lj.run_evaluation(eng
 golden)` runs a golden set (your `lj.GoldenCase` ground truth — bring your own data)
 and returns an `EvalReport` of per-label and micro/macro precision/recall/F1 plus
 exact-match rate. `lj.compare_evals(baseline, candidate)` diffs two runs for policy
-regression — gate your CI with `assert not cmp.regressed(tolerance=…)`. Pure,
+regression — gate your CI with `assert not cmp.regressed(tolerance=…)`. The shipped
+action (accept/block/review) is scorable too — `lj.run_action_evaluation` /
+`lj.score_actions` return an `ActionReport` (confusion matrix + accuracy). Pure,
 deterministic, zero-dep. See [docs/evaluation.md](docs/evaluation.md).
 
 ### Versioning & plugin conformance
