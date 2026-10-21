@@ -266,8 +266,11 @@ Một deployment, nhiều tenant. `Item(…, tenant="acme")` mang theo tenant, v
 dashboard theo tenant (LabJury mang danh tính, bạn tự mang & key storage).
 `lj.PerTenantUsage` là observer gom số quyết định và độ trễ theo tenant (tín hiệu
 cost model-agnostic; nhân với đơn giá model của bạn để ra tiền), và
-`lj.FanOutObserver` cho nó chạy song song với observer Prometheus. Xem
-[docs/multi-tenancy.md](docs/multi-tenancy.md).
+`lj.FanOutObserver` cho nó chạy song song với observer Prometheus. Với chi phí ở
+mức **token**, `lj.CostMeter` là side channel mà scorer của bạn báo usage vào (các
+hook `Observer` không thấy token); `TokenUsage.cost(rates)` quy token ra tiền theo
+đơn giá của bạn. Xem [docs/multi-tenancy.md](docs/multi-tenancy.md) và
+[docs/cost-metering.md](docs/cost-metering.md).
 
 ### Review bởi người (tùy chọn)
 
