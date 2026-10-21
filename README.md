@@ -268,7 +268,11 @@ your own stores and dashboards by tenant (LabJury carries the identity; you brin
 and key the storage). `lj.PerTenantUsage` is an observer that tallies decision
 counts and latency per tenant (the model-agnostic cost signal; multiply by your
 model's rate for dollars), and `lj.FanOutObserver` runs it beside a Prometheus
-observer. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
+observer. For **token-level** cost, `lj.CostMeter` is a side channel your scorer
+reports usage into (the `Observer` hooks never see tokens); `TokenUsage.cost(rates)`
+turns tokens into dollars at your rates. See
+[docs/multi-tenancy.md](docs/multi-tenancy.md) and
+[docs/cost-metering.md](docs/cost-metering.md).
 
 ### Human-in-the-loop review (opt-in)
 
