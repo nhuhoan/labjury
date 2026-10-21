@@ -278,7 +278,9 @@ contract — **stateless and fire-and-forget** — not the queue or the workflow
 `queue.enqueue(task)` hands it to your backend through the one-method
 `lj.ReviewQueue` seam (`lj.InMemoryReviewQueue` is the reference; SQS/DB/Pub-Sub are
 bring-your-own); and a human's `lj.ReviewResolution.to_verdict()` is the final
-verdict. The engine is untouched — wiring it up is deployer orchestration. See
+verdict. That override is itself auditable — `lj.override_event(event, resolution)`
+records it back to the audit trail as a correlation-linked event with reviewer
+provenance. The engine is untouched — wiring it up is deployer orchestration. See
 [docs/human-review.md](docs/human-review.md).
 
 ### Evaluation & regression (opt-in)

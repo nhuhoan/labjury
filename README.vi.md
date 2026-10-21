@@ -276,8 +276,10 @@ Khi policy trả `REVIEW`, cần người quyết định. LabJury sở hữu h�
 `lj.review_task_from_event(event)` đóng gói một quyết định thành `ReviewTask` mang
 đi được; `queue.enqueue(task)` giao cho backend của bạn qua seam một-method
 `lj.ReviewQueue` (`lj.InMemoryReviewQueue` là bản tham chiếu; SQS/DB/Pub-Sub là "tự
-mang"); và `lj.ReviewResolution.to_verdict()` của người là verdict cuối. Engine
-không bị đụng tới — tự wire là việc của deployer. Xem
+mang"); và `lj.ReviewResolution.to_verdict()` của người là verdict cuối. Quyết
+định ghi đè đó cũng audit được — `lj.override_event(event, resolution)` ghi nó
+trở lại audit trail thành một event liên kết qua `correlation_id` với provenance
+của người duyệt. Engine không bị đụng tới — tự wire là việc của deployer. Xem
 [docs/human-review.md](docs/human-review.md).
 
 ### Đánh giá & regression (tùy chọn)
