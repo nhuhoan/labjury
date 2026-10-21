@@ -23,7 +23,7 @@ from labjury.decisions import (
     Question,
     ScoreQuestion,
 )
-from labjury.results import Verdict
+from labjury.results import Action, Verdict
 from labjury.state import State
 
 
@@ -152,6 +152,18 @@ def verdict_to_dict(v: Verdict) -> dict:
         "novel_labels": v.novel_labels,
         "reason": v.reason,
     }
+
+
+def verdict_from_dict(d: dict) -> Verdict:
+    """Inverse of :func:`verdict_to_dict` — rebuild a :class:`Verdict` from its
+    JSON-safe mapping (backends deserialize cached verdicts through this seam)."""
+    return Verdict(
+        Action(d["action"]),
+        list(d["labels"]),
+        dict(d["scores"]),
+        list(d["novel_labels"]),
+        d["reason"],
+    )
 
 
 def provenance_of(plugin: object) -> ProvenanceRef:
