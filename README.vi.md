@@ -254,7 +254,9 @@ answers, snapshot taxonomy, provenance scorer/policy).
 `await lj.verify_replay(event, policy)` biến dữ liệu đó thành một lần kiểm toán
 một dòng: chạy lại policy trên input đã ghi và trả về `ReplayReport` với
 `.faithful` chỉ `True` khi verdict tái lập đúng **và** version policy chưa drift.
-Chỉ stage policy được chạy lại — scorer đã bị ghim bởi answers đã lưu. Xem
+Chỉ stage policy được chạy lại — scorer đã bị ghim bởi answers đã lưu. Drift giữa
+rubric đã ghi và registry cũng kiểm được: `await lj.rubric_drift(event, store)`
+liệt kê mọi rubric đã ghi không còn khớp `RubricStore`. Xem
 [docs/reproducibility.md](docs/reproducibility.md).
 
 ### Đa tenant & chi phí theo tenant (tùy chọn)

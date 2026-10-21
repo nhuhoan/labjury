@@ -256,7 +256,9 @@ answers, taxonomy snapshot, scorer/policy provenance).
 re-runs the policy over the recorded inputs and returns a `ReplayReport` whose
 `.faithful` is `True` only when the verdict reproduces **and** the policy version
 hasn't drifted since. Only the policy stage is replayed — the scorer is pinned by
-the recorded answers. See [docs/reproducibility.md](docs/reproducibility.md).
+the recorded answers. Rubric-vs-registry drift is checkable too:
+`await lj.rubric_drift(event, store)` lists any recorded rubric that no longer
+matches the `RubricStore`. See [docs/reproducibility.md](docs/reproducibility.md).
 
 ### Multi-tenancy & per-tenant cost (opt-in)
 

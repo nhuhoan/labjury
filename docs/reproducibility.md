@@ -71,13 +71,36 @@ the class name and the version string. If you change what a policy *does*, bump 
 `version`, and `verify_replay` will catch any historical decision that no longer
 reproduces under the new version.
 
+## Rubric drift — `rubric_drift`
+
+`verify_replay` checks the *policy* stage. A decision also depends on the
+**rubric** — the `Question` asked about each label, which a proposer optionally
+sources from a [`RubricStore`](rubric-registry.md) and records as the candidate's
+`rubric_version`. `rubric_drift` confirms those recorded rubrics still match the
+registry:
+
+```python
+drift = await lj.rubric_drift(event, store)   # list[RubricDrift]; [] == consistent
+```
+
+For each recorded candidate carrying a `rubric_version`, it fetches
+`await store.get(label, version)` and compares the recorded question to the
+registry's. A published `(label, version)` is immutable by contract, so any
+mismatch is a real signal, reported as one `RubricDrift(label, version, reason,
+recorded_question, registry_question)` with `reason` either:
+
+- `"version absent from registry"` — the version isn't in this registry
+  (`registry_question is None`): you are checking against a *different* registry
+  than the one that made the decision, or it was rebuilt;
+- `"question differs from registry"` — the version exists but its question
+  changed.
+
+Candidates without a `rubric_version` are skipped (they weren't sourced from a
+registry), and a cache-hit or no-candidate event yields `[]`. Like
+`verify_replay`, this is **detection only** — what to do about drift (alert,
+quarantine, re-decide) is the deployer's.
+
 ## Extensions (not in core yet)
 
-- **Rubric-vs-registry check.** Each candidate records its `rubric_version`; a
-  fuller audit can confirm those still match a live `RubricStore`
-  (`await store.get(label, version)` and compare the `Question`). Because a
-  published rubric version is immutable, a mismatch means you are checking against
-  a *different* registry than the one that made the decision — a useful
-  cross-environment consistency signal.
 - **Scorer manifest comparison.** The recorded scorer provenance can be surfaced
   alongside the report for teams that track model versions out of band.
