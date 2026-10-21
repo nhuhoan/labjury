@@ -108,3 +108,46 @@ async def test_failed_result_is_empty_prediction():
     report = await run_evaluation(engine, [GoldenCase(Item("i1", {}), frozenset({"spam"}))])
     assert report.per_label["spam"].fn == 1
     assert report.per_label["spam"].recall == 0.0
+
+
+# -- action-level evaluation ---------------------------------------------------
+
+
+def test_all_correct():
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    r = score_actions([(Action.BLOCK, Action.BLOCK), (Action.ACCEPT, Action.ACCEPT)])
+    assert r.accuracy == 1.0
+    assert r.per_action["block"].f1 == 1.0
+    assert r.per_action["accept"].f1 == 1.0
+
+
+def test_misroute():
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    # expected BLOCK but predicted REVIEW
+    r = score_actions([(Action.BLOCK, Action.REVIEW)])
+    assert r.confusion[("block", "review")] == 1
+    assert r.accuracy == 0.0
+    assert r.per_action["block"].recall == 0.0  # the BLOCK was missed
+    assert r.per_action["block"].fn == 1
+
+
+def test_none_predicted_is_failure():
+    from labjury.evaluation import score_actions
+    from labjury.results import Action
+
+    r = score_actions([(Action.BLOCK, None)])
+    assert r.confusion[("block", "none")] == 1
+    assert r.per_action["block"].fn == 1
+    assert r.per_action["block"].tp == 0
+    assert "none" not in r.per_action  # "none" is not a real class
+
+
+def test_empty():
+    from labjury.evaluation import score_actions
+
+    r = score_actions([])
+    assert r.accuracy == 0.0 and r.per_action == {}

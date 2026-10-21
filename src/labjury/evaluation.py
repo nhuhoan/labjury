@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from labjury.results import Action
 from labjury.state import Item
 
 
@@ -117,6 +118,51 @@ def score_predictions(
         label: LabelScore(label, tp, fp, fn) for label, (tp, fp, fn) in counts.items()
     }
     return EvalReport(n_cases, exact_matches, per_label)
+
+
+@dataclass(frozen=True)
+class ActionReport:
+    """Action-level metrics: the shipped decision (ACCEPT/BLOCK/REVIEW) scored as a
+    3-class problem. ``confusion`` is keyed by ``(expected_action, predicted_action)``
+    action-value strings (predicted ``"none"`` = the pipeline produced no action);
+    ``per_action`` is one-vs-rest per real action, reusing :class:`LabelScore`."""
+
+    n_cases: int
+    confusion: dict[tuple[str, str], int]
+    per_action: dict[str, LabelScore]
+
+    @property
+    def accuracy(self) -> float:
+        correct = sum(n for (e, p), n in self.confusion.items() if e == p)
+        return _ratio(correct, self.n_cases)
+
+
+def score_actions(
+    pairs: Iterable[tuple[Action, Action | None]],
+) -> ActionReport:
+    """Score ``(expected_action, predicted_action)`` pairs into an :class:`ActionReport`.
+
+    ``predicted is None`` means the pipeline produced no action (a ``FAILED`` item);
+    it is bucketed under the predicted key ``"none"``, counts as a false negative for
+    the expected action, and is never a true positive. ``per_action`` metrics are
+    one-vs-rest over the real action classes that appear as an expected value."""
+    confusion: dict[tuple[str, str], int] = {}
+    n_cases = 0
+    for expected, predicted in pairs:
+        n_cases += 1
+        key = (expected.value, predicted.value if predicted is not None else "none")
+        confusion[key] = confusion.get(key, 0) + 1
+    real_actions = {e for (e, _p) in confusion}
+    per_action = {
+        a: LabelScore(
+            a,
+            confusion.get((a, a), 0),
+            sum(n for (e, p), n in confusion.items() if p == a and e != a),
+            sum(n for (e, p), n in confusion.items() if e == a and p != a),
+        )
+        for a in real_actions
+    }
+    return ActionReport(n_cases, confusion, per_action)
 
 
 @dataclass(frozen=True)
