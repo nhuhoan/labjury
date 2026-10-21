@@ -2,9 +2,9 @@
 
 # ⚖️ LabJury
 
-**Framework ra quyết định đa phương thức, bất đồng bộ — để gán nhãn và kiểm duyệt ở quy mô lớn.**
+**Framework Python mã nguồn mở để gán nhãn và kiểm duyệt nội dung ở quy mô lớn.**
 
-*Bên đề xuất trình bày · trọng tài chấm điểm · phán quyết được tuyên.*
+*Bên đề xuất trình bày, giám khảo chấm điểm, phán quyết được tuyên.*
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](./LICENSE)
@@ -18,66 +18,59 @@
 
 ## LabJury là gì?
 
-Phân loại nội dung ở quy mô lớn — gán nhãn video, kiểm duyệt quảng cáo, định
-tuyến ticket — đang bóp nghẹt các đội ngũ theo hai cách cùng lúc: con người
-không theo kịp khối lượng, còn AI hỗ trợ thì liên tục **bỏ sót vi phạm**,
-**bỏ qua bất cứ thứ gì nó chưa có nhãn**, và **đọc sai sắc thái, tiếng lóng,
-ẩn ý**.
+LabJury là framework bất đồng bộ, hướng plugin để phân loại và kiểm duyệt nội
+dung khi khối lượng lớn tới mức gọi một LLM cho từng mục trở nên quá tốn kém.
 
-LabJury là framework giúp làm việc phân loại đó một cách **chất lượng, rẻ, và
-an toàn**. Ý tưởng cốt lõi là một cách chia việc:
+Ở quy mô lớn, như gán nhãn video, kiểm duyệt quảng cáo hay định tuyến ticket, mọi
+thứ gãy ở hai đầu cùng lúc: con người duyệt không xuể, còn AI hỗ trợ thì bỏ sót vi
+phạm, lúng túng trước nội dung chưa từng gặp, và hiểu sai tiếng lóng hay ẩn ý.
+LabJury giải quyết bằng cách tách một việc khó thành hai việc dễ hơn:
 
-> **Một model sinh ngôn ngữ *đề xuất* các nhãn ứng viên. Một model chỉ-ra-quyết-định
-> *chấm điểm* chúng. Một policy *tuyên* phán quyết.**
+> Một mô hình sinh ngôn ngữ *đề xuất* các nhãn ứng viên. Một mô hình chuyên ra
+> quyết định, rẻ hơn, *chấm điểm* chúng. Một policy *tuyên* phán quyết cuối.
 
-Phần tốn kém (một LLM lớn *sinh* ra nhãn ứng viên) chỉ chạy một cách tiết kiệm.
-Phần khối lượng lớn (*chấm điểm* các ứng viên đó) chạy trên một model nhanh,
-rẻ, chỉ-ra-quyết-định — ví dụ [Jev](https://typesafe.ai) của TypeSafe AI, trả
-về câu trả lời có kiểu (`Choice` / `Score` / `Noul`) kèm độ tin cậy thay vì
-văn xuôi. Đó là thứ khiến **chất lượng, an toàn, và chi phí thấp** có thể dung
-hòa ở mức hàng chục triệu item mỗi ngày.
+Bước đề xuất nhãn là bước tốn kém nên chạy thưa. Bước chấm điểm mới chạy hàng triệu
+lần mỗi ngày, nên nó được giao cho một mô hình nhanh và rẻ.
 
-### Về cái tên
+Tên gọi ghép từ **LAB**EL và **JURY** (bồi thẩm đoàn). Một mô hình đoán nhãn chỉ là
+một ý kiến đơn lẻ. LabJury xử lý như một phiên tòa: trình bày bằng chứng gồm lời
+thoại, chữ trong ảnh, hashtag và các nhãn ứng viên, cân nhắc, rồi đưa ra phán quyết
+kèm độ tin cậy.
 
-**LabJury** = **LAB**(EL) + **JURY** (bồi thẩm đoàn). Kiến trúc *chính là* một
-phiên tòa: nhiều tiếng nói trình bày bằng chứng — bản ghi lời thoại, chữ trong
-ảnh, hashtag, các nhãn được đề xuất — một trọng tài cân nhắc chúng, và trả về
-một phán quyết kèm độ tin cậy. Đọc như một backronym, nó nói ra đúng việc nó làm:
+### Jev và LLMJudgeScorer
 
-> **L**abeling **A**nd **B**atch **J**udgment **U**nder **R**anked
-> **Y**ardsticks — *gán nhãn và phán quyết hàng loạt theo các thước đo đã xếp hạng.*
+Jev là model chuyên ra quyết định của TypeSafe AI. Thay vì tạo văn bản dài dòng, Jev
+đưa ra kết quả trực tiếp: chọn phương án, chấm điểm hoặc gán nhãn, kèm độ tin cậy.
 
----
+Trong LabJury, Jev đóng vai trò giám khảo, đánh giá từng nhãn ứng viên. Nhờ được tối
+ưu cho tác vụ này, Jev nhanh, tiết kiệm chi phí và xử lý được hàng chục triệu mục mỗi
+ngày.
 
-## Vì sao thiết kế như vậy
-
-| Nguyên tắc | Ý nghĩa trong thực tế |
-|---|---|
-| **Không phụ thuộc cứng vào một model nào** | Jev chỉ là một `Scorer`. `LLMJudgeScorer` có sẵn cho phép cả pipeline chạy với bất kỳ chat LLM nào — nên bạn (và người đóng góp mã nguồn mở không có quyền truy cập Jev) không bao giờ bị kẹt. |
-| **Taxonomy thế giới mở** | Nội dung không khớp nhãn nào sẽ được nêu lên như một *nhãn mới đề xuất* để người duyệt — **không bao giờ âm thầm bỏ qua**. Nhờ vậy kho nhãn lớn dần thay vì lỗi thời. |
-| **An toàn thiên về bắt sót** | Một vi phạm khả nghi sẽ được **giữ lại chờ duyệt trừ khi trọng tài tự tin rằng nó sạch**. "Nghi ngờ thì giữ lại" — không bao giờ "không chắc thì thả qua". |
-| **State đa phương thức, mở rộng được** | `text` · `json` · `image` · `audio` · `metadata` · `frame_sequence`, và bất kỳ kiểu nào bạn đăng ký. Lõi không bao giờ biết một tập modality *đóng*. |
-| **Cơ chế xử lý nhanh, không phải bài toán scale** | Async toàn tuyến, gộp batch, giới hạn song song, backpressure tường minh, cache. Queue, lưu trữ, autoscale, và con đường tới 50M/ngày là hạ tầng của **bạn** — dựng *quanh* LabJury, không nằm trong nó. |
-| **Plugin qua entry-points** | Ship một gói `pip` đăng ký dưới `labjury.<kind>`; lõi không cần đổi. |
+Chưa có Jev? LabJury vẫn chạy đầy đủ với `LLMJudgeScorer` tích hợp sẵn, tương thích
+với các mô hình như OpenAI, Claude và model chạy local.
 
 ---
 
-## Luồng xử lý
+## Dùng khi nào, chưa cần khi nào
 
-```
-          ┌──────────────┐   ┌───────────┐   ┌─────────┐   ┌───────────────┐   ┌──────┐
- item ──▶ │ ContextBuilder│──▶│ Proposer  │──▶│ Scorer  │──▶│ DecisionPolicy│──▶│ Sink │──▶ phán quyết
-          └──────────────┘   └───────────┘   └─────────┘   └───────────────┘   └──────┘
-            làm giàu state     đề xuất         chấm điểm       nhận / chặn /       định tuyến tới
-           (ASR, OCR, …)       nhãn ứng viên   (Jev hoặc       giữ lại             DB / duyệt /
-                                               LLM-judge)                          nhãn mới
-                                   ▲
-                                   └── bỏ qua ở "đường tắt thị giác"
-```
+Dùng LabJury khi:
 
-**Định tuyến động, theo từng item.** Một item thuần hình ảnh (ví dụ ảnh chỉ cần
-kiểm tra hở hang/logo cấm) bỏ qua bước Proposer đắt tiền và đi thẳng tới scorer
-nhận ảnh. Chỉ những item khó về *ngữ nghĩa* (ẩn ý, lóng) mới đi đường dài.
+- Bạn kiểm duyệt hoặc phân loại nội dung ở khối lượng lớn, và chi phí gọi LLM cho
+  từng mục trở nên quá cao.
+- Bạn cần quyết định an toàn, giải thích được và kiểm toán lại được, thay vì một con
+  số từ hộp đen.
+- Bộ nhãn của bạn còn thay đổi, và bạn muốn nội dung lạ được nêu lên thành nhãn mới
+  thay vì bị bỏ sót.
+- Bạn muốn tự chọn mô hình, nơi lưu trữ và hạ tầng, không bị khóa vào một nhà cung cấp.
+
+Chưa cần LabJury khi:
+
+- Bạn chỉ phân loại vài trăm mục. Gọi thẳng một LLM đơn giản hơn và đủ dùng.
+- Bạn muốn một sản phẩm cắm là chạy, kèm sẵn queue, database và dashboard. LabJury là
+  framework, bạn dựng hạ tầng quanh nó.
+- Bạn cần một mô hình dựng sẵn cho tiếng Việt hay cho ảnh ngay hôm nay. Lõi không kèm
+  mô hình nào sẵn, bạn tự gắn mô hình của mình vào. `LLMJudgeScorer` tích hợp sẵn giúp
+  bạn chạy thử ngay với bất kỳ chat LLM nào.
 
 ---
 
@@ -118,222 +111,171 @@ print(result.status, result.verdict)
 
 ---
 
-## Hợp đồng `process_batch`
+## Cách hoạt động
 
-Một worker bên ngoài (đứng sau Kafka/queue của bạn) điều khiển engine. API
-batch của nó là một **hợp đồng cố định** — người tích hợp dựa vào đó để scale:
+```
+          ┌──────────────┐   ┌───────────┐   ┌─────────┐   ┌───────────────┐   ┌──────┐
+ item ──▶ │ ContextBuilder│──▶│ Proposer  │──▶│ Scorer  │──▶│ DecisionPolicy│──▶│ Sink │──▶ phán quyết
+          └──────────────┘   └───────────┘   └─────────┘   └───────────────┘   └──────┘
+            làm giàu state     đề xuất         chấm điểm       nhận / chặn /       định tuyến tới
+           (ASR, OCR, …)       nhãn ứng viên   (Jev hoặc       giữ lại             DB / duyệt /
+                                               LLM-judge)                          nhãn mới
+                                   ▲
+                                   └── bỏ qua ở "đường tắt thị giác"
+```
 
-- **Không theo thứ tự** — mỗi kết quả mang `correlation_id` của item, không phải vị trí trong danh sách.
-- **Chịu lỗi từng phần** — một item hỏng trả về kết quả `FAILED`; các item còn lại vẫn được quyết định.
-- **Backpressure tường minh** — item vượt quá `max_concurrency` trong một lần gọi sẽ trả `RETRY_LATER`, để caller đưa lại vào hàng đợi thay vì engine bị chặn.
+Định tuyến chạy động theo từng mục. Một mục thuần hình ảnh, ví dụ ảnh chỉ cần kiểm
+hở hang hay logo cấm, sẽ bỏ qua bước Proposer tốn kém và đi thẳng tới scorer nhận
+ảnh. Chỉ những mục khó về ngữ nghĩa, như ẩn ý hay tiếng lóng, mới đi đường dài.
+
+Một worker bên ngoài, đứng sau Kafka hay queue của bạn, điều khiển engine qua
+`process_batch`. API này là một hợp đồng cố định để bạn dựa vào mà mở rộng. Kết quả
+trả về không theo thứ tự, mỗi kết quả mang `correlation_id` của chính nó. Một mục
+hỏng trả về `FAILED` mà không kéo các mục khác theo. Mục vượt `max_concurrency` trả
+về `RETRY_LATER`, để bạn đưa lại vào hàng đợi thay vì để engine bị chặn.
 
 ---
 
-## Mở rộng LabJury
+## Vì sao thiết kế như vậy
 
-Mỗi khâu là một plugin, được phát hiện qua entry-points. Trong `pyproject.toml`
-của gói bạn:
+| Nguyên tắc | Ý nghĩa trong thực tế |
+|---|---|
+| Không khóa vào một mô hình | Jev chỉ là một `Scorer`. Cả pipeline chạy được với bất kỳ chat LLM nào qua `LLMJudgeScorer`, nên bạn luôn có đường chạy thử và một phương án dự phòng. |
+| Taxonomy thế giới mở | Nội dung không khớp nhãn nào được nêu lên thành nhãn mới cho người duyệt, không bao giờ âm thầm bỏ qua. Bộ nhãn nhờ vậy lớn lên theo nội dung thật thay vì lỗi thời. |
+| An toàn thiên về bắt sót | Nếu giám khảo không đủ tự tin rằng nội dung sạch, mục bị giữ lại chờ duyệt. Thà chặn nhầm một quảng cáo sạch còn hơn để lọt một vi phạm. |
+| State đa phương thức | `text`, `json`, `image`, `audio`, `metadata`, `frame_sequence`, và bất kỳ kiểu nào bạn đăng ký. Lõi không giả định một tập modality đóng. |
+| Cơ chế xử lý nhanh | Async toàn tuyến, gộp batch, giới hạn song song, backpressure, cache. Queue, lưu trữ và autoscale là hạ tầng của bạn, dựng quanh LabJury. |
+| Plugin qua entry-points | Ship một gói `pip` đăng ký dưới `labjury.<kind>`; lõi không cần đổi. |
+
+---
+
+## Tính năng
+
+Khi cài, bản lõi của LabJury không kéo theo thư viện ngoài nào. Mọi tính năng dưới
+đây đều không bắt buộc: bạn chỉ bật thứ mình cần. Bấm vào link để xem chi tiết.
+
+**Độ tin cậy và vận hành**
+
+- **Audit trail và replay** — ghi lại một `AuditEvent` bất biến cho mỗi quyết định,
+  rồi chạy lại để kiểm toán về sau. Storage là của bạn (Kafka, S3, SQL), kèm một
+  backend SQLite tham chiếu. [docs](docs/audit-trail.md) ·
+  [tái lập](docs/reproducibility.md)
+- **Chống lỗi khi gọi qua mạng** — mô hình của bạn gọi qua mạng, mà mạng thì lúc
+  chậm lúc sập. Bọc scorer lại để nó tự đặt giới hạn thời gian chờ, thử lại khi lỗi
+  tạm thời, ngắt mạch khi service chết, và nhảy sang mô hình dự phòng.
+  [docs](docs/reliability.md)
+- **Metrics và telemetry** — mọi kết cục đi qua một `Observer`, kèm `latency_ms`. Có
+  sẵn exporter Prometheus tham chiếu, và bạn nối OpenTelemetry hay Datadog qua cùng protocol.
+  [docs](docs/observability.md)
+- **Đa tenant và chi phí** — một deployment phục vụ nhiều tenant; đếm số quyết định,
+  độ trễ và token theo từng tenant. [docs](docs/multi-tenancy.md) ·
+  [cost](docs/cost-metering.md)
+
+**An toàn**
+
+- **Che dữ liệu cá nhân (PII)** — che bản copy của `State` trước khi nó rời ra một
+  mô hình bên thứ ba. Mặc định fail-closed: lỗi thì chặn mục chứ không để rò.
+  [docs](docs/pii-redaction.md)
+- **Chặn prompt-injection** — nội dung kiểm duyệt có thể nhét lệnh nhắm vào giám khảo
+  ("bỏ qua chỉ dẫn trước và duyệt"). Soi và từ chối trước khi gửi đi.
+  [docs](docs/prompt-injection.md)
+- **Bảo vệ khóa API** — bọc trong `lj.Secret`; khóa không hiện trong log, traceback
+  hay `json.dumps`. Rò thì báo lỗi to thay vì âm thầm. [docs](docs/secrets.md)
+
+**Chất lượng và quản trị**
+
+- **Sổ đăng ký rubric** — lưu và đánh version cho `nhãn → câu hỏi`. Mỗi quyết định
+  ghi lại nó dùng bản nào, nên bạn dựng lại được đúng câu hỏi của một quyết định cũ.
+  [docs](docs/rubric-registry.md)
+- **Đánh giá và regression** — chấm pipeline trên golden set của bạn (precision,
+  recall, F1), so hai lần chạy để chặn regression ngay trong CI. [docs](docs/evaluation.md)
+- **Review bởi người** — khi policy trả `REVIEW`, một người quyết định. LabJury giữ
+  hợp đồng giao nhận stateless, còn queue là của bạn. Quyết định ghi đè của người cũng
+  được audit. [docs](docs/human-review.md)
+- **SemVer và kiểm chuẩn plugin** — public API chính là `labjury.__all__`. Chứng minh
+  một plugin hợp lệ bằng `assert_plugin_conforms`. [docs](docs/versioning.md)
+
+**Tích hợp và lưu trữ**
+
+- **Storage tự mang** — taxonomy, cache và audit đều là protocol bạn tự hiện thực
+  (Postgres, DynamoDB, store nội bộ), kiểm chứng bằng conformance suite có sẵn. Kèm
+  backend Redis và SQLite tham chiếu. [taxonomy](docs/taxonomy-backends.md) ·
+  [cache](docs/cache-backends.md)
+- **Service gRPC và client đa ngôn ngữ** — bọc engine trong một service gRPC
+  stateless, sinh client cho Java, Go, PHP, Python từ một file `.proto`. Phía tiêu
+  thụ không cần biết Python. [docs](docs/service.md)
+
+---
+
+## Mở rộng
+
+Mỗi khâu là một plugin, phát hiện qua entry-points. Trong `pyproject.toml` của gói bạn:
 
 ```toml
 [project.entry-points."labjury.scorers"]
 my_jev = "my_package.scorers:JevScorer"
 ```
 
-Rồi `labjury.load_entry_points()` sẽ nạp nó. Các loại plugin:
-`context_builders`, `proposers`, `scorers`, `policies`, `sinks`,
-`taxonomies`, `caches`.
+Rồi `labjury.load_entry_points()` sẽ nạp nó. Các loại plugin: `context_builders`,
+`proposers`, `scorers`, `policies`, `sinks`, `taxonomies`, `caches`. Xem
+[CONTRIBUTING.md](./CONTRIBUTING.md) cho quy ước lõi-zero-dep, TDD và cách merge.
 
-### Taxonomy backend bền vững & tự xây
+---
 
-Từ vựng của taxonomy cần sống sót qua mỗi lần khởi động lại. Có sẵn backend
-tham chiếu Redis:
+## Câu hỏi thường gặp
 
-```bash
-pip install labjury[redis]
-```
+**LabJury có bắt buộc dùng Jev không?**
+Không. Jev chỉ là một `Scorer`. Cả pipeline chạy được với bất kỳ chat LLM nào qua
+`LLMJudgeScorer` tích hợp sẵn, kể cả khi bạn chưa có Jev.
 
-```python
-from labjury.contrib.redis_taxonomy import RedisTaxonomyStore
-engine = lj.Engine(..., taxonomy=RedisTaxonomyStore(async_redis_client))
-```
+**Có bị khóa vào một nhà cung cấp không?**
+Không. Mô hình, taxonomy, cache, audit, metrics và queue review đều là protocol bạn
+tự hiện thực rồi nối vào. LabJury mang cơ chế, bạn mang mô hình và storage.
 
-Redis chỉ là một lựa chọn — bạn có thể dùng hệ store riêng (Postgres, DynamoDB,
-store nội bộ) bằng cách hiện thực protocol `TaxonomyStore`, rồi kiểm chứng bằng
-conformance suite có sẵn (`labjury.assert_taxonomy_store_contract`). Xem
-[docs/taxonomy-backends.md](docs/taxonomy-backends.md).
+**LabJury có kèm database hay message queue không?**
+Không. Bản lõi không phụ thuộc thư viện ngoài nào. Có sẵn backend tham chiếu (Redis,
+SQLite, Prometheus) sau các gói cài thêm tùy chọn, còn `import labjury` không kéo theo
+thứ gì.
 
-Với **cache quyết định** bền vững (để các item giống hệt nhau không bị chấm lại
-qua mỗi lần khởi động lại hay giữa các worker), câu chuyện cũng vậy:
-`labjury.InMemoryCache` là mặc định zero-dep, còn
-`labjury.contrib.redis_cache.RedisCache` là backend tham chiếu Redis có sẵn. Xem
-[docs/cache-backends.md](docs/cache-backends.md).
+**Khác gì so với gọi thẳng một LLM để gán nhãn?**
+Gọi thẳng LLM hỏi "nhãn là gì?" cho từng mục, vừa đắt vừa khó kiểm toán. LabJury tách
+bước đề xuất nhãn (đắt, chạy thưa) khỏi bước chấm điểm (rẻ, chạy nhiều), giữ lại audit
+trail và cho phép chặn regression. Ở khối lượng lớn, chênh lệch chi phí là nhiều lần.
 
-### Audit trail (tùy chọn, độc lập storage)
+**Chạy được tới quy mô nào?**
+LabJury lo phần cơ chế xử lý nhanh: async, batch, giới hạn song song, backpressure,
+cache. Con đường tới hàng chục triệu mục mỗi ngày là hạ tầng của bạn, gồm queue, lưu
+trữ và autoscale, dựng quanh nó.
 
-Ghi một `AuditEvent` bất biến cho mỗi quyết định và replay lại sau:
-`lj.Engine(..., audit=lj.InMemoryAuditLog())`. LabJury **không kèm database** —
-dùng store riêng (Kafka/S3/SIEM/SQL) qua protocol `AuditLog` append-only và mối
-nối `AuditEvent.to_dict`/`from_dict`, kiểm chứng bằng
-`labjury.assert_audit_log_contract`. Có sẵn một backend SQLite bền vững
-(`labjury.contrib.sqlite_audit.SqliteAuditLog`, không cần extra). Xem
-[docs/audit-trail.md](docs/audit-trail.md).
+**Dùng được từ Java, Go hay PHP không?**
+Được, qua một service gRPC stateless. Client sinh tự động từ một file `.proto`, phía
+tiêu thụ không cần Python. Xem [docs/service.md](docs/service.md).
 
-### Metrics & telemetry (tùy chọn)
-
-Mỗi kết cục terminal đi qua một `Observer`, và mỗi quyết định mang theo
-`latency_ms` đầu-cuối. Có sẵn một exporter Prometheus tham chiếu
-(`labjury.contrib.prometheus_observer.PrometheusObserver`, `pip install
-labjury[prometheus]`) — counter theo kết cục cộng histogram độ trễ, còn endpoint
-`/metrics` là của bạn. Cắm backend bất kỳ (OpenTelemetry, Datadog) qua cùng
-protocol `Observer`. Xem [docs/observability.md](docs/observability.md).
-
-### Plugin remote đáng tin cậy (tùy chọn)
-
-Mọi plugin remote đều có thể được bọc để tăng độ tin cậy — `labjury.ReliableScorer`,
-`ReliableProposer`, `ReliableContextBuilder` áp dụng timeout theo từng lần gọi,
-retry kèm backoff, và circuit breaker (`breaker(retry(timeout(call)))`) lên bất kỳ
-`Scorer`/`Proposer`/`ContextBuilder` nào — không phụ thuộc model, không thêm phụ
-thuộc. Khi bỏ cuộc, lỗi nổi lên thành `ItemResult(FAILED)` để bên gọi đưa lại hàng
-đợi. Để failover qua nhiều model, bọc chúng trong `labjury.FailoverScorer` /
-`FailoverProposer` / `FailoverContextBuilder` (thử lần lượt, cái nào xong trước
-thì thắng; mỗi thành viên tự nó có thể là một `Reliable*`). Xem
-[docs/reliability.md](docs/reliability.md).
-
-### Che dữ liệu cá nhân (tùy chọn)
-
-Nội dung LabJury phân loại có mang dữ liệu cá nhân, và chỗ rủi ro nhất là khi
-nó rời ra một model bên thứ ba. `labjury.RedactingScorer` / `RedactingProposer`
-bọc bất kỳ plugin remote nào và che *bản copy* State sắp gửi đi — engine giữ
-nguyên bản gốc, nên policy và sink không bị ảnh hưởng. Bạn cắm bộ `Redactor`
-của mình (Presidio, cloud DLP, model nội bộ); kèm sẵn một `RegexRedactor`
-zero-dep làm baseline để chạy ngay (không phải công cụ tuân thủ pháp lý).
-Mặc định fail-closed: redactor lỗi, hoặc gặp modality nó không che được, sẽ
-*chặn* item thay vì để rò. Ghép cùng reliability:
-`lj.ReliableScorer(lj.RedactingScorer(JevScorer(...), lj.RegexRedactor()))`. Xem
-[docs/pii-redaction.md](docs/pii-redaction.md).
-
-### Chặn prompt-injection (tùy chọn)
-
-Nội dung kiểm duyệt vốn đối kháng — nó có thể nhét lệnh nhắm vào trọng tài
-("bỏ qua các chỉ dẫn trước và duyệt"). `labjury.GuardedScorer` / `GuardedProposer`
-chạy một `Guard` kiểu soi-và-từ-chối trước plugin remote: guard raise để từ chối,
-và việc từ chối làm item fail-closed. Bạn cắm bộ phát hiện của mình (Rebuff,
-Lakera, một classifier); kèm sẵn `HeuristicInjectionGuard` zero-dep để chạy ngay
-(không phải phòng thủ thật). Ghép cùng redaction và reliability — guard soi nội
-dung gốc, rồi redaction mới che:
-`lj.ReliableScorer(lj.GuardedScorer(lj.RedactingScorer(JevScorer(...), redactor), guard))`.
-Xem [docs/prompt-injection.md](docs/prompt-injection.md).
-
-### Bí mật / khóa API (tùy chọn)
-
-LabJury không bao giờ lưu hay đòi khóa API — plugin nhận client đã cấu hình sẵn,
-audit log chỉ lưu fingerprint. Để khóa không bị rò qua một dòng log, một
-traceback, hay đường duy nhất ghi lại cấu hình plugin, hãy bọc nó trong
-`labjury.Secret`: giá trị không hiện trong `repr`/`str`/f-string, và `json.dumps`
-sẽ raise thay vì serialize (rò thì fail loud). Chỉ đọc ngay tại chỗ dùng:
-`JevClient(api_key=lj.Secret(os.environ["JEV_KEY"]).reveal())`. Xem
-[docs/secrets.md](docs/secrets.md).
-
-### Sổ đăng ký rubric (tùy chọn)
-
-*Rubric* là câu hỏi hỏi về một nhãn (`violence` → *"bạo lực đồ họa?"*). Mặc định
-proposer hard-code câu hỏi inline; `labjury.RubricStore` cho phép lưu và **đánh
-version** cho `label → Question` — một version đã publish là bất biến, và mỗi
-quyết định ghi lại nó dùng bản nào. Proposer lấy câu hỏi bằng
-`r = await store.resolve(label)` rồi gắn `rubric_version=r.version` lên candidate;
-version đó tự chảy vào audit trail (không đổi engine), và `store.get(label,
-version)` dựng lại đúng rubric mà một quyết định cũ đã dùng. `InMemoryRubricStore`
-là bản tham chiếu zero-dep; backend bền vững là "tự mang", kiểm chứng bằng
-`labjury.assert_rubric_store_contract`. Xem
-[docs/rubric-registry.md](docs/rubric-registry.md).
-
-### Tái lập & replay (tùy chọn)
-
-Audit trail đã ghim mọi input của một quyết định (candidates + `rubric_version`,
-answers, snapshot taxonomy, provenance scorer/policy).
-`await lj.verify_replay(event, policy)` biến dữ liệu đó thành một lần kiểm toán
-một dòng: chạy lại policy trên input đã ghi và trả về `ReplayReport` với
-`.faithful` chỉ `True` khi verdict tái lập đúng **và** version policy chưa drift.
-Chỉ stage policy được chạy lại — scorer đã bị ghim bởi answers đã lưu. Drift giữa
-rubric đã ghi và registry cũng kiểm được: `await lj.rubric_drift(event, store)`
-liệt kê mọi rubric đã ghi không còn khớp `RubricStore`. Xem
-[docs/reproducibility.md](docs/reproducibility.md).
-
-### Đa tenant & chi phí theo tenant (tùy chọn)
-
-Một deployment, nhiều tenant. `Item(…, tenant="acme")` mang theo tenant, và engine
-đóng dấu nó lên mọi `ItemResult` và `AuditEvent` — để bạn tự phân vùng store và
-dashboard theo tenant (LabJury mang danh tính, bạn tự mang & key storage).
-`lj.PerTenantUsage` là observer gom số quyết định và độ trễ theo tenant (tín hiệu
-cost model-agnostic; nhân với đơn giá model của bạn để ra tiền), và
-`lj.FanOutObserver` cho nó chạy song song với observer Prometheus. Với chi phí ở
-mức **token**, `lj.CostMeter` là side channel mà scorer của bạn báo usage vào (các
-hook `Observer` không thấy token); `TokenUsage.cost(rates)` quy token ra tiền theo
-đơn giá của bạn. Xem [docs/multi-tenancy.md](docs/multi-tenancy.md) và
-[docs/cost-metering.md](docs/cost-metering.md).
-
-### Review bởi người (tùy chọn)
-
-Khi policy trả `REVIEW`, cần người quyết định. LabJury sở hữu hợp đồng giao–nhận —
-**stateless, fire-and-forget** — chứ không sở hữu queue hay quy trình.
-`lj.review_task_from_event(event)` đóng gói một quyết định thành `ReviewTask` mang
-đi được; `queue.enqueue(task)` giao cho backend của bạn qua seam một-method
-`lj.ReviewQueue` (`lj.InMemoryReviewQueue` là bản tham chiếu; SQS/DB/Pub-Sub là "tự
-mang"); và `lj.ReviewResolution.to_verdict()` của người là verdict cuối. Quyết
-định ghi đè đó cũng audit được — `lj.override_event(event, resolution)` ghi nó
-trở lại audit trail thành một event liên kết qua `correlation_id` với provenance
-của người duyệt. Engine không bị đụng tới — tự wire là việc của deployer. Xem
-[docs/human-review.md](docs/human-review.md).
-
-### Đánh giá & regression (tùy chọn)
-
-Pipeline có chính xác không, và một thay đổi làm nó tệ đi không?
-`lj.run_evaluation(engine, golden)` chạy một golden set (ground truth `lj.GoldenCase`
-của bạn — tự mang dữ liệu) và trả về `EvalReport` gồm precision/recall/F1 per-label
-và micro/macro cộng exact-match rate. `lj.compare_evals(baseline, candidate)` so hai
-lần chạy để bắt policy regression — chặn CI bằng `assert not
-cmp.regressed(tolerance=…)`. Action được ship (accept/block/review) cũng chấm được
-— `lj.run_action_evaluation` / `lj.score_actions` trả về `ActionReport` (ma trận
-nhầm lẫn + accuracy). Thuần, deterministic, zero-dep. Xem
-[docs/evaluation.md](docs/evaluation.md).
-
-### Phiên bản & kiểm chuẩn plugin
-
-LabJury theo SemVer: public API chính là `labjury.__all__`, và các protocol plugin
-`@runtime_checkable` là hợp đồng ổn định. Chứng minh một plugin hợp lệ bằng
-`lj.assert_plugin_conforms(obj, Scorer)` (stage plugin) hoặc các suite
-`assert_*_store_contract` (backend có trạng thái). Xem
-[docs/versioning.md](docs/versioning.md).
+**Đã dùng được cho production chưa?**
+Lõi đã ổn định và theo SemVer (public API là `labjury.__all__`). Các plugin tham chiếu
+gọi mô hình thật đang nằm trong lộ trình bên dưới.
 
 ---
 
 ## Lộ trình
 
 - **Lõi (Core)** — chính là gói này. ✅
-- **Plugin tham chiếu** — Jev scorer thật, proposer mạnh tiếng Việt, context builder ASR/OCR/trích frame, taxonomy & cache bền vững (Redis), và pipeline tham chiếu cho short-video + quảng cáo.
-- **Service + client đa ngôn ngữ** — một service gRPC stateless (kèm REST/JSON tùy chọn) bọc engine, cùng các client mỏng sinh tự động cho **Java, Go, PHP, Python**, để đội ứng dụng dùng LabJury mà không phải đụng tới Python.
+- **Plugin tham chiếu** — Jev scorer thật, proposer mạnh tiếng Việt, context builder
+  ASR/OCR/trích frame, và pipeline tham chiếu cho short-video và quảng cáo.
+- **Service và client đa ngôn ngữ** — service gRPC stateless (kèm REST/JSON tùy chọn)
+  và client sinh sẵn cho Java, Go, PHP, Python.
 
 ---
 
-## Đóng góp & quản trị
+## Đóng góp và quản trị
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — cách setup, quy ước lõi-zero-dep / TDD /
   plugin, và cách đưa một thay đổi vào merge.
-- [docs/versioning.md](docs/versioning.md) — chính sách SemVer: public API chính là
-  `labjury.__all__`, và cách chứng minh một plugin hợp chuẩn.
-- [SECURITY.md](./SECURITY.md) — báo cáo lỗ hổng, và tuyên bố trung thực về việc các
-  cơ chế bảo mật tích hợp sẵn làm được và không làm được gì.
+- [docs/versioning.md](docs/versioning.md) — chính sách SemVer và cách chứng minh một
+  plugin hợp chuẩn.
+- [SECURITY.md](./SECURITY.md) — báo cáo lỗ hổng, và tuyên bố trung thực các cơ chế
+  bảo mật tích hợp làm được và không làm được gì.
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant v2.1.
-
-### Service gRPC & client đa ngôn ngữ (tùy chọn)
-
-Dùng LabJury từ Java, Go, PHP, hay Python qua một **service gRPC stateless** bọc
-engine. Hợp đồng chỉ là một file —
-[`proto/labjury/v1/labjury.proto`](proto/labjury/v1/labjury.proto) — và mọi client đều
-sinh từ nó (`protoc`), nên phía tiêu thụ không cần Python. `pip install
-"labjury[grpc]"`, `bash scripts/gen_proto.sh`, rồi `asyncio.run(serve(engine))`. Logic
-được test nằm ở `labjury.service.translation`/`handler` thuần; lõi vẫn zero-dependency
-(`import labjury` không kéo grpc). Xem [docs/service.md](docs/service.md).
 
 ---
 
