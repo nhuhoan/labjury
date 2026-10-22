@@ -252,9 +252,7 @@ không ship keo dán riêng từng nhà cung cấp (xem [docs/multimodal.md](doc
 Cả hai đều **inject** `transport` HTTP, nên class không import nhà cung cấp nào và
 test chạy hoàn toàn offline. Đây là ví dụ tham khảo, **không** phải gói cài được —
 một gói `labjury-<model>` cài qua pip (lý tưởng là do nhà cung cấp sở hữu) là bước
-tiếp theo khi có nhu cầu thực. Design:
-[Quyet](docs/superpowers/specs/2026-10-22-quyet-scorer-design.md) ·
-[Jev](docs/superpowers/specs/2026-10-22-jev-scorer-design.md).
+tiếp theo khi có nhu cầu thực.
 
 ---
 

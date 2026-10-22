@@ -10,3 +10,6 @@ build/
 
 # generated gRPC stubs (produced by scripts/gen_proto.sh from proto/)
 /src/labjury/v1/
+
+# internal planning/design docs (superpowers) — kept locally, not shipped
+docs/superpowers/

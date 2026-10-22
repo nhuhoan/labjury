@@ -2,8 +2,8 @@
 
 The example is not packaged; ``examples`` is on the pytest path (pyproject) so
 these import it directly. The transport is a fake dict-in/dict-out async
-callable — no network, no httpx. Every mapping rule the design doc pins
-(``docs/superpowers/specs/2026-10-22-quyet-scorer-design.md``) has a test here.
+callable — no network, no httpx. Every response-mapping rule (choice echo,
+score argmax, noul threshold, fail-closed on partial failures) has a test here.
 """
 
 import pytest

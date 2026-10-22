@@ -20,7 +20,6 @@ The HTTP ``transport`` is **injected**, so this module imports no third party an
 is testable with a fake. The optional :func:`httpx_transport` factory is a
 one-line turnkey path that imports ``httpx`` lazily.
 
-Design: ``docs/superpowers/specs/2026-10-22-quyet-scorer-design.md``.
 Wire contract (observed, authoritative): ``POST`` to
 ``https://mkp-api.fptcloud.com/v1/systemone``, ``Authorization: Bearer <key>``,
 text-only input (``input_modalities: ["text"]``).

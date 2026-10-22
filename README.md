@@ -257,9 +257,7 @@ where that line falls). Two worked references live in [`examples/`](examples/):
 Both **inject** their HTTP `transport`, so the classes import no provider and
 their tests run fully offline. They are reference examples, not published
 packages — a real installable `labjury-<model>` (vendor-owned where possible) is
-the next step once there is install demand. Design notes:
-[Quyet](docs/superpowers/specs/2026-10-22-quyet-scorer-design.md) ·
-[Jev](docs/superpowers/specs/2026-10-22-jev-scorer-design.md).
+the next step once there is install demand.
 
 ---
 

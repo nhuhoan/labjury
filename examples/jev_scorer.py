@@ -22,8 +22,9 @@ Mapping to LabJury questions:
   - ``ScoreQuestion``  -> Jev ``score``   (levels -> ordered criteria)
   - ``NoulQuestion``   -> Jev ``noul``
 Jev's ``box`` type (image localization -> a bounding box) has **no LabJury
-question primitive**, so it is deliberately out of scope here; see non-goals in
-``docs/superpowers/specs/2026-10-22-jev-scorer-design.md``.
+question primitive**, so it is deliberately out of scope here (adding a
+``BoxQuestion``/region answer would be a framework-level decision, not an
+adapter's).
 """
 
 from __future__ import annotations
