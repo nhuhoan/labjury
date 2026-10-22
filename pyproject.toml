@@ -38,6 +38,8 @@ Homepage = "https://github.com/nhuhoan/labjury"
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# ``examples`` is on the path for tests only — the example adapters are not
+# packaged (see [tool.setuptools.packages.find], which scans ``src`` alone).
+pythonpath = ["src", "examples"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
