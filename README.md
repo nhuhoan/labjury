@@ -161,7 +161,7 @@ so you re-enqueue it instead of blocking the engine.
 | No lock-in to one model | Jev is one possible `Scorer`; `LLMJudgeScorer` accepts an async adapter for a chat LLM. You supply the provider client and normalize its JSON response. |
 | Open-world taxonomy | A proposer can supply a new label; the policy proposes it to the taxonomy when its answer qualifies, while uncertain or missing candidates go to review. |
 | Recall-biased safety | If the judge is not confident the content is clean, the item is held for review. Better to hold a clean ad by mistake than to let a violation through. |
-| Multimodal state | `text`, `json`, `image`, `audio`, `metadata`, `frame_sequence`, and custom types are containers and routing signals. Media processing needs your plugins. |
+| Multimodal state | `text`, `json`, `image`, `audio`, `metadata`, `frame_sequence`, and custom types are containers and routing signals. Media processing needs your plugins. [docs](docs/multimodal.md) |
 | Fast-processing mechanisms | Async end to end, batching, bounded concurrency, backpressure, caching. Queues, storage, and autoscaling are your infrastructure, built around LabJury. |
 | Plugins via entry-points | Ship a `pip` package registered under `labjury.<kind>`; the core never changes. |
 
@@ -240,6 +240,26 @@ my_jev = "my_package.scorers:JevScorer"
 Then `labjury.load_entry_points()` loads it. Plugin kinds: `context_builders`,
 `proposers`, `scorers`, `policies`, `sinks`, `taxonomies`, `caches`. See
 [CONTRIBUTING.md](./CONTRIBUTING.md) for the zero-dep-core, TDD, and plugin conventions.
+
+---
+
+## Ecosystem
+
+Model adapters live **outside** the package — LabJury ships the `Scorer`
+interface, not per-vendor glue (see [docs/multimodal.md](docs/multimodal.md) for
+where that line falls). Two worked references live in [`examples/`](examples/):
+
+| Adapter | Model | Modalities | Notes |
+|---|---|---|---|
+| [`quyet_scorer.py`](examples/quyet_scorer.py) | Quyet-1.0-Large (FPT Cloud) | text | Calibrated decision model; `choice`/`noul`/`score` map 1:1. |
+| [`jev_scorer.py`](examples/jev_scorer.py) | Jev / System One (TypeSafe AI) | text + image | Multimodal: images ride as base64 assets through the same `Scorer` seam. |
+
+Both **inject** their HTTP `transport`, so the classes import no provider and
+their tests run fully offline. They are reference examples, not published
+packages — a real installable `labjury-<model>` (vendor-owned where possible) is
+the next step once there is install demand. Design notes:
+[Quyet](docs/superpowers/specs/2026-10-22-quyet-scorer-design.md) ·
+[Jev](docs/superpowers/specs/2026-10-22-jev-scorer-design.md).
 
 ---
 

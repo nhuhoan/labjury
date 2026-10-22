@@ -158,7 +158,7 @@ về `RETRY_LATER`, để bạn đưa lại vào hàng đợi thay vì để eng
 | Không khóa vào một mô hình | Jev là một lựa chọn `Scorer`; `LLMJudgeScorer` nhận adapter async cho chat LLM. Bạn tự cấp client và chuẩn hóa response JSON. |
 | Taxonomy thế giới mở | Proposer có thể đưa ra nhãn mới; policy đề xuất nó vào taxonomy khi đáp án đạt điều kiện, còn ứng viên thiếu hoặc chưa chắc chắn được đưa review. |
 | An toàn thiên về bắt sót | Nếu giám khảo không đủ tự tin rằng nội dung sạch, mục bị giữ lại chờ duyệt. Thà chặn nhầm một quảng cáo sạch còn hơn để lọt một vi phạm. |
-| State đa phương thức | `text`, `json`, `image`, `audio`, `metadata`, `frame_sequence` và kiểu tùy chỉnh là vùng chứa và tín hiệu routing. Xử lý media cần plugin của bạn. |
+| State đa phương thức | `text`, `json`, `image`, `audio`, `metadata`, `frame_sequence` và kiểu tùy chỉnh là vùng chứa và tín hiệu routing. Xử lý media cần plugin của bạn. [docs](docs/multimodal.md) |
 | Cơ chế xử lý nhanh | Async toàn tuyến, gộp batch, giới hạn song song, backpressure, cache. Queue, lưu trữ và autoscale là hạ tầng của bạn, dựng quanh LabJury. |
 | Plugin qua entry-points | Ship một gói `pip` đăng ký dưới `labjury.<kind>`; lõi không cần đổi. |
 
@@ -235,6 +235,26 @@ my_jev = "my_package.scorers:JevScorer"
 Rồi `labjury.load_entry_points()` sẽ nạp nó. Các loại plugin: `context_builders`,
 `proposers`, `scorers`, `policies`, `sinks`, `taxonomies`, `caches`. Xem
 [CONTRIBUTING.md](./CONTRIBUTING.md) cho quy ước lõi-zero-dep, TDD và cách merge.
+
+---
+
+## Hệ sinh thái
+
+Adapter cho model nằm **ngoài** gói — LabJury ship cái *interface* `Scorer`, chứ
+không ship keo dán riêng từng nhà cung cấp (xem [docs/multimodal.md](docs/multimodal.md)
+để hiểu ranh giới đó). Hai ví dụ hoàn chỉnh nằm trong [`examples/`](examples/):
+
+| Adapter | Model | Phương thức | Ghi chú |
+|---|---|---|---|
+| [`quyet_scorer.py`](examples/quyet_scorer.py) | Quyet-1.0-Large (FPT Cloud) | text | Decision model có hiệu chỉnh; `choice`/`noul`/`score` ánh xạ 1:1. |
+| [`jev_scorer.py`](examples/jev_scorer.py) | Jev / System One (TypeSafe AI) | text + ảnh | Đa phương thức: ảnh đi dạng base64 asset qua đúng seam `Scorer`. |
+
+Cả hai đều **inject** `transport` HTTP, nên class không import nhà cung cấp nào và
+test chạy hoàn toàn offline. Đây là ví dụ tham khảo, **không** phải gói cài được —
+một gói `labjury-<model>` cài qua pip (lý tưởng là do nhà cung cấp sở hữu) là bước
+tiếp theo khi có nhu cầu thực. Design:
+[Quyet](docs/superpowers/specs/2026-10-22-quyet-scorer-design.md) ·
+[Jev](docs/superpowers/specs/2026-10-22-jev-scorer-design.md).
 
 ---
 
